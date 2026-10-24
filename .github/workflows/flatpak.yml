@@ -1,0 +1,104 @@
+# Reusable workflow: build Flatpak bundles for x86_64 and aarch64.
+#
+# Usage from an app repository:
+#
+#   jobs:
+#     flatpak:
+#       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
+#       with:
+#         manifest: io.github.suitably.MyApp.yml
+#
+# Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
+# its bundle as the artifact "<bundle>-<arch>".
+name: Flatpak
+
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        description: Path to the Flatpak manifest, relative to the repository root.
+        required: true
+        type: string
+      bundle:
+        description: Bundle file name without extension. Defaults to the app id.
+        required: false
+        type: string
+        default: ''
+      retention-days:
+        description: Artifact retention in days.
+        required: false
+        type: number
+        default: 14
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Flatpak tooling
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends flatpak flatpak-builder
+          # Ubuntu 24.04 restricts unprivileged user namespaces, which
+          # bubblewrap needs for the build sandbox.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Read app id
+        id: meta
+        env:
+          MANIFEST: ${{ inputs.manifest }}
+          BUNDLE: ${{ inputs.bundle }}
+        run: |
+          app_id=$(flatpak-builder --show-manifest "$MANIFEST" \
+            | python3 -c 'import json,sys; m=json.load(sys.stdin); print(m.get("id") or m["app-id"])')
+          echo "app-id=$app_id" >> "$GITHUB_OUTPUT"
+          echo "bundle=${BUNDLE:-$app_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache flatpak-builder state
+        uses: actions/cache@v4
+        with:
+          path: .flatpak-builder
+          key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles(inputs.manifest) }}-${{ github.sha }}
+          restore-keys: |
+            flatpak-builder-${{ matrix.arch }}-${{ hashFiles(inputs.manifest) }}-
+            flatpak-builder-${{ matrix.arch }}-
+
+      - name: Build
+        env:
+          MANIFEST: ${{ inputs.manifest }}
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
+            --ccache --force-clean --arch=${{ matrix.arch }} \
+            --repo=repo build-dir "$MANIFEST"
+
+      - name: Bundle
+        env:
+          APP_ID: ${{ steps.meta.outputs.app-id }}
+          BUNDLE: ${{ steps.meta.outputs.bundle }}
+        run: |
+          flatpak build-bundle --arch=${{ matrix.arch }} \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo "$BUNDLE-${{ matrix.arch }}.flatpak" "$APP_ID"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}
+          path: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}.flatpak
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: error

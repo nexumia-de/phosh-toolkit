@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.suitably.PhoshDemo</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Phosh Demo</name>
+  <summary>Adaptive libadwaita demo for Phosh phones</summary>
+  <description>
+    <p>
+      A minimal adaptive GTK4 and libadwaita application. It demonstrates
+      the navigation split view pattern that collapses on narrow phone
+      screens and is used to test the Phosh toolkit.
+    </p>
+  </description>
+  <developer id="io.github.suitably">
+    <name>suitably</name>
+  </developer>
+  <url type="homepage">https://github.com/suitably/phosh-toolkit</url>
+  <url type="bugtracker">https://github.com/suitably/phosh-toolkit/issues</url>
+  <launchable type="desktop-id">io.github.suitably.PhoshDemo.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <recommends>
+    <display_length compare="ge">360</display_length>
+  </recommends>
+  <supports>
+    <control>touch</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-24">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
