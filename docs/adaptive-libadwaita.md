@@ -3,7 +3,7 @@ type: Guideline
 title: Adaptive libadwaita UI
 description: Rules for GTK4/libadwaita UIs that work at 360×720 on Phosh and scale up to the desktop.
 tags: [ui, gtk4, libadwaita, adaptive, guideline]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:26:02Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T20:05:00Z }
 sources:
   - id: adw-adaptive
     resource: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/adaptive-layouts.html
@@ -77,6 +77,11 @@ widgets are available there. Host builds on Ubuntu 24.04 have 1.5 only.
 ```ini
 X-Purism-FormFactor=Workstation;Mobile;
 ```
+
+The trailing `;` is required: Phosh matches the case-insensitive substring
+`mobile;` and hides the app in mobile mode otherwise (see
+[Phosh](phosh.md)). `desktop-file-validate` does not catch a missing `;`,
+so also run `grep -Eiq '^X-Purism-FormFactor=.*mobile;' data/*.desktop`.
 
 AppStream metainfo:[^as-relations]
 

@@ -4,9 +4,21 @@
 Shows an AdwNavigationSplitView that collapses into a single pane below
 400 sp via AdwBreakpoint, which is the pattern every app should follow.
 """
+import glob
+import os
+import re
 import sys
 
-import gi
+try:
+    import gi
+except ImportError:
+    # python3-gi is built for the distribution's Python (3.12 on Ubuntu
+    # 24.04). If python3 is another version, re-exec with the matching one.
+    for so in glob.glob("/usr/lib/python3/dist-packages/gi/_gi.cpython-3*-*.so"):
+        exe = "/usr/bin/python3." + re.search(r"cpython-3(\d+)", so).group(1)
+        if os.path.exists(exe) and os.path.realpath(exe) != os.path.realpath(sys.executable):
+            os.execv(exe, [exe, *sys.argv])
+    raise
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")

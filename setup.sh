@@ -85,6 +85,24 @@ if [[ -z "${SKIP_FLATHUB:-}" ]]; then
   fi
 fi
 
+# python3-gi is built for the distribution's Python (3.12 on Ubuntu 24.04).
+# Some images point python3 at another version, where "import gi" fails.
+gi_python=
+for so in /usr/lib/python3/dist-packages/gi/_gi.cpython-3*-*.so; do
+  [[ -e $so ]] || continue
+  ver=${so##*/_gi.cpython-3}
+  ver=${ver%%-*}
+  [[ -x /usr/bin/python3.$ver ]] && gi_python=/usr/bin/python3.$ver && break
+done
+if python3 -c 'import gi' >/dev/null 2>&1; then
+  log "PyGObject works with python3 ($(python3 -c 'import sys; print(sys.version.split()[0])'))."
+elif [[ -n $gi_python ]] && "$gi_python" -c 'import gi' >/dev/null 2>&1; then
+  warn "python3 is $(python3 --version 2>&1), but python3-gi is built for $gi_python."
+  warn "Run PyGObject apps with $gi_python (the examples re-exec themselves)."
+else
+  warn "PyGObject (python3-gi) cannot be imported."
+fi
+
 if command -v node >/dev/null 2>&1 && node -e "require('playwright')" >/dev/null 2>&1; then
   log "Playwright (Node) found; scripts/screenshot.sh is ready."
 else

@@ -31,7 +31,19 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 ## Metadata
 
-- `.desktop` file: `X-Purism-FormFactor=Workstation;Mobile;`
+- `.desktop` file: `X-Purism-FormFactor=Workstation;Mobile;` exactly,
+  **including the trailing `;`**. Phosh's app grid hides an app in mobile
+  mode unless this value contains the substring `mobile;`; the match is
+  **case-insensitive** (`strcasestr` in `filter_adaptive()`,
+  `src/app-grid.c`), so `Mobile;` works but `Workstation;Mobile` (no
+  trailing `;`) does not. `desktop-file-validate` does not catch the
+  missing `;`, so also check:
+
+  ```sh
+  grep -Eiq '^X-Purism-FormFactor=.*mobile;' path/to/*.desktop
+  ```
+
+  Details: [docs/phosh.md](docs/phosh.md).
 - metainfo:
 
   ```xml

@@ -4,7 +4,7 @@ title: Phosh
 description: The GNOME-based Wayland shell for phones that all apps target.
 resource: https://phosh.mobi/
 tags: [phosh, platform, mobile, gnome]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:26:02Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T20:05:00Z }
 stale_after: 2027-04-24T00:00:00Z
 sources:
   - id: phosh-home
@@ -57,10 +57,17 @@ and version used for testing is recorded in [device](device.md).
 - **Desktop metadata decides visibility.** By default (`app-filter-mode`
   = `['adaptive']` in the `mobi.phosh.shell` schema) the app grid shows only
   adaptive apps in mobile mode. An app counts as adaptive if its `.desktop`
-  file has `X-Purism-FormFactor` containing `mobile;` (case-insensitive,
-  the trailing `;` is required) or `X-KDE-FormFactor` containing
-  `handset;`, or if its id is listed in the `force-adaptive` key.[^phosh-app-grid]
-  Use `X-Purism-FormFactor=Workstation;Mobile;`. Software centers also read
+  file has an `X-Purism-FormFactor` value containing the substring
+  `mobile;`, or an `X-KDE-FormFactor` value containing `handset;`, or if
+  its id is listed in the `force-adaptive` key.[^phosh-app-grid] The check
+  is `strcasestr (value, "mobile;")`: a **case-insensitive substring
+  match**, so `Workstation;Mobile;` and `mobile;` match, while
+  `Workstation;Mobile` (no trailing `;`) and `Mobile` do not.
+  `desktop-file-validate` accepts the value without the trailing `;`, so
+  it does not catch this mistake. Always use
+  `X-Purism-FormFactor=Workstation;Mobile;`. Note that GLib also rejects a
+  `.desktop` file whose `Exec` binary is not on `PATH`, so test the
+  classification with the app installed. Software centers also read
   the AppStream `display_length` and `control` relations in the metainfo
   (see [adaptive libadwaita](adaptive-libadwaita.md)).
 - **Apps that do not fit** overflow the screen. phoc can optionally scale

@@ -4,7 +4,7 @@ title: Screenshot testing
 description: How scripts/screenshot.sh renders a GTK4 app at phone size with Broadway and Playwright, and the quirks it works around.
 resource: ../scripts/screenshot.sh
 tags: [testing, screenshot, broadway, playwright]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:26:02Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T20:05:00Z }
 ---
 
 # Usage
@@ -52,8 +52,13 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
 - **Python interpreter mismatch.** `python3-gi` is built for the
   distribution's Python (3.12 on Ubuntu 24.04). If `python3` points to a
   different version (pyenv, update-alternatives), `import gi` fails with
-  `cannot import name '_gi'`. Call the distribution interpreter
-  explicitly, e.g. `python3.12` or `/usr/bin/python3.12`.
+  `cannot import name '_gi'`. `setup.sh` detects this and prints the
+  matching interpreter. `examples/adw-demo.py` re-execs itself with the
+  interpreter that matches `/usr/lib/python3/dist-packages/gi/_gi.cpython-3XX-*.so`,
+  so `python3 examples/adw-demo.py` works both on a plain Ubuntu 24.04
+  (python3 = 3.12) and on images where python3 is another version. For
+  other PyGObject apps call the distribution interpreter explicitly, e.g.
+  `/usr/bin/python3.12`.
 
 # Requirements
 
