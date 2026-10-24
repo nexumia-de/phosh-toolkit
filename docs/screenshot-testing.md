@@ -4,7 +4,7 @@ title: Screenshot testing
 description: How scripts/screenshot.sh renders a GTK4 app at phone size with Broadway and Playwright, and the quirks it works around.
 resource: ../scripts/screenshot.sh
 tags: [testing, screenshot, broadway, playwright]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T20:05:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T21:45:00Z }
 ---
 
 # Usage
@@ -46,7 +46,10 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
 - **No window manager.** Broadway places new windows at an offset and
   does not maximize them, while [Phosh](phosh.md) maximizes every window.
   The script double-clicks the center of the header bar, which triggers
-  GTK's default "toggle maximize" action. Apps whose header bar center is
+  GTK's default "toggle maximize" action. It clicks the centre of the
+  header bar's visible part, because a window whose default width exceeds
+  the viewport (e.g. 800 px at 360 px) extends past the right edge and
+  its real centre is off screen. Apps whose header bar center is
   an interactive widget (e.g. a search entry) may need `-n` and a window
   default size of 360×720 instead.
 - **Python interpreter mismatch.** `python3-gi` is built for the

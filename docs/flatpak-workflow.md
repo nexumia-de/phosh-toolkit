@@ -4,7 +4,7 @@ title: Flatpak build and install workflow
 description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
 tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T20:40:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T21:45:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -53,6 +53,12 @@ is only a Recommends of the appstream stack, so with
 `--no-install-recommends` the build fails with `file-read-error` and
 `filters-but-no-output`. `setup.sh` and the reusable workflow install it
 explicitly.
+
+The same applies to `elfutils`: flatpak-builder strips every ELF file a
+module installs with `eu-strip`. Without it, the first module with
+compiled code fails with `Failed to execute child process "eu-strip"`.
+Apps that only install scripts (like the demo) never hit this. `setup.sh`
+and the reusable workflow install it explicitly.
 
 # Bundle
 

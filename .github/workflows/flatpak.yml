@@ -57,8 +57,10 @@ jobs:
           "${apt[@]}" update -q
           # librsvg2-common provides the SVG pixbuf loader; without it
           # "appstreamcli compose" cannot read SVG icons (file-read-error).
+          # elfutils provides eu-strip, which flatpak-builder runs on every
+          # ELF file it installs; both are only Recommends.
           "${apt[@]}" install -y -q --no-install-recommends \
-            flatpak flatpak-builder librsvg2-common
+            flatpak flatpak-builder librsvg2-common elfutils
           # Ubuntu 24.04 restricts unprivileged user namespaces, which
           # bubblewrap needs for the build sandbox.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
