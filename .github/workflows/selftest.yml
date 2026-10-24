@@ -20,7 +20,7 @@ jobs:
       - name: Set up host
         run: ./setup.sh
         env:
-          SKIP_FLATHUB: '1'
+          SETUP_PROFILE: ci
       - name: Validate desktop file and metainfo
         run: |
           desktop-file-validate examples/*.desktop
