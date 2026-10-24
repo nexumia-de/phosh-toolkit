@@ -6,8 +6,16 @@
 # plain VM, or on a laptop.
 #
 # Usage:
-#   ./setup.sh            # install everything
-#   SKIP_FLATHUB=1 ./setup.sh   # skip adding the Flathub remote
+#   ./setup.sh                    # full development setup (default)
+#   SETUP_PROFILE=ci ./setup.sh   # lean set for the validate CI job
+#   SKIP_FLATHUB=1 ./setup.sh     # skip adding the Flathub remote
+#
+# Profiles:
+#   full  Everything for app development: build tools, GTK4/libadwaita dev
+#         packages, Blueprint, Vala, Rust, PyGObject, Flatpak tooling, cage.
+#   ci    Only what validation needs: desktop-file-validate, appstreamcli,
+#         the shell linter and the runtime for scripts/screenshot.sh
+#         (Broadway, GTK4/libadwaita typelibs, PyGObject). No Flatpak.
 set -euo pipefail
 
 log() { printf '\033[1;34m[phosh-toolkit]\033[0m %s\n' "$*"; }
@@ -30,7 +38,20 @@ if [[ -r /etc/os-release ]]; then
   fi
 fi
 
-PACKAGES=(
+profile=${SETUP_PROFILE:-full}
+
+CI_PACKAGES=(
+  desktop-file-utils
+  appstream
+  librsvg2-common       # SVG pixbuf loader, needed by appstreamcli compose
+  libgtk-4-bin          # gtk4-broadwayd, used by scripts/screenshot.sh
+  gir1.2-gtk-4.0
+  gir1.2-adw-1
+  python3-gi
+  shellcheck
+)
+
+FULL_PACKAGES=(
   # Build tooling
   build-essential
   meson
@@ -41,6 +62,7 @@ PACKAGES=(
   # Validation
   desktop-file-utils
   appstream
+  shellcheck
   # GTK4 + libadwaita
   libgtk-4-dev
   libgtk-4-bin          # gtk4-broadwayd, used by scripts/screenshot.sh
@@ -57,8 +79,19 @@ PACKAGES=(
   flatpak
   flatpak-builder
   librsvg2-common       # SVG pixbuf loader, needed by appstreamcli compose
-  weston
+  # Headless Wayland compositor for testing the Wayland backend. Not weston:
+  # libweston pulls in FFmpeg, FreeRDP, GStreamer and flite via its
+  # VNC/RDP/PipeWire backends (+112 packages, +72 MB; see
+  # docs/host-setup.md).
+  cage
 )
+
+case $profile in
+  full) PACKAGES=("${FULL_PACKAGES[@]}") ;;
+  ci) PACKAGES=("${CI_PACKAGES[@]}") ;;
+  *) echo "Unknown SETUP_PROFILE '$profile' (expected: full, ci)." >&2; exit 1 ;;
+esac
+log "Profile: $profile"
 
 missing=()
 for pkg in "${PACKAGES[@]}"; do
@@ -69,16 +102,20 @@ done
 
 if ((${#missing[@]})); then
   log "Installing ${#missing[@]} missing package(s): ${missing[*]}"
-  # sudo resets the environment, so pass DEBIAN_FRONTEND through env, and
-  # wait at most 120 s for a dpkg lock held by e.g. unattended-upgrades.
-  apt=("${SUDO[@]}" env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120)
+  # sudo resets the environment, so pass DEBIAN_FRONTEND through env. Wait
+  # at most 120 s for a dpkg lock held by e.g. unattended-upgrades, and
+  # retry downloads whose connection stalls for 30 s instead of hanging.
+  apt=("${SUDO[@]}" env DEBIAN_FRONTEND=noninteractive apt-get
+    -o DPkg::Lock::Timeout=120 -o Acquire::Retries=3 -o Acquire::http::Timeout=30)
   "${apt[@]}" update -q
   "${apt[@]}" install -y -q --no-install-recommends "${missing[@]}"
 else
   log "All apt packages already installed."
 fi
 
-if [[ -z "${SKIP_FLATHUB:-}" ]]; then
+if [[ $profile == ci ]]; then
+  log "Skipping Flathub remote (ci profile has no Flatpak)."
+elif [[ -z "${SKIP_FLATHUB:-}" ]]; then
   if flatpak remotes --system --columns=name 2>/dev/null | grep -qx flathub; then
     log "Flathub remote already configured."
   else
