@@ -10,6 +10,10 @@
 #
 # Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
 # its bundle as the artifact "<bundle>-<arch>".
+#
+# With "release: true", a push also attaches both bundles to the rolling
+# GitHub Release "latest", from which suitably/phosh-apps publishes them.
+# The calling job then needs "permissions: { contents: write }".
 name: Flatpak
 
 on:
@@ -29,6 +33,20 @@ on:
         required: false
         type: number
         default: 14
+      release:
+        description: On push, attach the bundles to the rolling release "latest".
+        required: false
+        type: boolean
+        default: false
+      publish-repo:
+        description: Repository to notify after a release (repository_dispatch "app-updated").
+        required: false
+        type: string
+        default: ''
+    secrets:
+      PUBLISH_TOKEN:
+        description: Token allowed to dispatch to publish-repo. Without it the publish repo's schedule picks the release up.
+        required: false
 
 permissions:
   contents: read
@@ -109,3 +127,46 @@ jobs:
           path: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}.flatpak
           retention-days: ${{ inputs.retention-days }}
           if-no-files-found: error
+
+  release:
+    name: Release bundles
+    needs: build
+    if: inputs.release && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: bundles
+          merge-multiple: true
+
+      - name: Attach bundles to the rolling release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          files=(bundles/*.flatpak)
+          if gh release view latest >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest" \
+              -f sha="$GITHUB_SHA" -F force=true
+            gh release upload latest "${files[@]}" --clobber
+          else
+            gh release create latest "${files[@]}" --target "$GITHUB_SHA" \
+              --prerelease --title "Latest build" \
+              --notes "Rolling build of the latest push; replaced on every push."
+          fi
+
+      - name: Notify the publish repository
+        if: inputs.publish-repo != ''
+        env:
+          GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          PUBLISH_REPO: ${{ inputs.publish-repo }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::No PUBLISH_TOKEN; $PUBLISH_REPO picks this release up on its schedule."
+            exit 0
+          fi
+          gh api "repos/$PUBLISH_REPO/dispatches" -f event_type=app-updated \
+            -f "client_payload[repository]=$GITHUB_REPOSITORY"
