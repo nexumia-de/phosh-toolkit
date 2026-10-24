@@ -69,9 +69,11 @@ done
 
 if ((${#missing[@]})); then
   log "Installing ${#missing[@]} missing package(s): ${missing[*]}"
-  export DEBIAN_FRONTEND=noninteractive
-  "${SUDO[@]}" apt-get update -q
-  "${SUDO[@]}" apt-get install -y -q --no-install-recommends "${missing[@]}"
+  # sudo resets the environment, so pass DEBIAN_FRONTEND through env, and
+  # wait at most 120 s for a dpkg lock held by e.g. unattended-upgrades.
+  apt=("${SUDO[@]}" env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120)
+  "${apt[@]}" update -q
+  "${apt[@]}" install -y -q --no-install-recommends "${missing[@]}"
 else
   log "All apt packages already installed."
 fi

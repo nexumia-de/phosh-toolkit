@@ -4,7 +4,7 @@ title: Flatpak build and install workflow
 description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
 tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T20:20:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T20:40:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -74,7 +74,12 @@ App repositories call the reusable workflow; see
 unprivileged user namespaces (needed by bubblewrap), caches
 `.flatpak-builder` (one cache entry per architecture and manifest hash;
 it is refreshed when the manifest changes) and uploads `<bundle>-<arch>.flatpak` as an artifact
-named `<bundle>-<arch>`. Cross-building aarch64 locally under QEMU works
+named `<bundle>-<arch>`. The build job has `timeout-minutes: 30`; apt
+runs with `DEBIAN_FRONTEND=noninteractive` passed through `sudo env` (sudo
+drops exported variables) and `-o DPkg::Lock::Timeout=120`. Slow runner
+mirrors happen: one run fetched 166 MB at 144 kB/s and took 19 minutes, so
+a timeout fails such a run fast instead of letting it run for 6 hours.
+Cross-building aarch64 locally under QEMU works
 but is slow; prefer CI.
 
 # Install on the phone

@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **Update**: CI hardening in [Flatpak workflow](flatpak-workflow.md): job timeouts (validate 15 min, Flatpak build 30 min), apt with `DEBIAN_FRONTEND` passed through `sudo env` and a 120 s dpkg lock timeout, in `setup.sh` and the workflow.
 * **Update**: Root [index](index.md) links [decisions/index.md](decisions/index.md) instead of the directory. The Flatpak CI cache key no longer includes the commit SHA (see [Flatpak workflow](flatpak-workflow.md)).
 * **Update**: [Flatpak workflow](flatpak-workflow.md): `librsvg2-common` is required for `appstreamcli compose` to read SVG icons (x86_64 CI failed without it).
 * **Update**: [Screenshot testing](screenshot-testing.md) now resolves Playwright from the caller's directory, so a local `node_modules` works (it failed in CI before).
