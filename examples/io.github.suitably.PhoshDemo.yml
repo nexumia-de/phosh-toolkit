@@ -1,0 +1,29 @@
+# Flatpak manifest for the demo app. Used by .github/workflows/selftest.yml
+# to exercise the reusable Flatpak workflow.
+id: io.github.suitably.PhoshDemo
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: phosh-demo
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+modules:
+  - name: phosh-demo
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 adw-demo.py ${FLATPAK_DEST}/bin/phosh-demo
+      - install -Dm644 ${FLATPAK_ID}.desktop -t ${FLATPAK_DEST}/share/applications
+      - install -Dm644 ${FLATPAK_ID}.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo
+      - install -Dm644 ${FLATPAK_ID}.svg -t ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps
+    sources:
+      - type: file
+        path: adw-demo.py
+      - type: file
+        path: io.github.suitably.PhoshDemo.desktop
+      - type: file
+        path: io.github.suitably.PhoshDemo.metainfo.xml
+      - type: file
+        path: io.github.suitably.PhoshDemo.svg

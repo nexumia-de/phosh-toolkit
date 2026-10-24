@@ -1,0 +1,45 @@
+# Exercises the toolkit itself: validators, screenshot script and the
+# reusable Flatpak workflow with the demo app in examples/.
+name: Self-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up host
+        run: ./setup.sh
+        env:
+          SKIP_FLATHUB: '1'
+      - name: Validate desktop file and metainfo
+        run: |
+          desktop-file-validate examples/*.desktop
+          appstreamcli validate --no-net examples/*.metainfo.xml
+          # Phosh needs "mobile;" (case-insensitive, trailing ';').
+          grep -Eiq '^X-Purism-FormFactor=.*mobile;' examples/*.desktop
+      - name: Lint shell scripts
+        run: shellcheck setup.sh scripts/*.sh
+      - name: Screenshot demo at 360x720
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          scripts/screenshot.sh -o demo-360x720.png -- python3 examples/adw-demo.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-screenshot
+          path: demo-360x720.png
+
+  flatpak:
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      manifest: examples/io.github.suitably.PhoshDemo.yml
