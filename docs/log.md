@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **Creation**: [Shared app repository](app-repository.md) and the decision [own Flatpak repository](decisions/own-flatpak-repo.md): all apps published as one signed Flatpak repository (`suitably/phosh-apps`, GitHub Pages) for GNOME Software. The reusable [Flatpak workflow](flatpak-workflow.md) gained `release`, `publish-repo` and the `PUBLISH_TOKEN` secret.
 * **Update**: [Flatpak workflow](flatpak-workflow.md): `elfutils` (`eu-strip`) is required by flatpak-builder for modules with compiled code; added to `setup.sh` and the reusable workflow. Found while building Wetterblick (libshumate, protobuf-c).
 * **Update**: [Screenshot testing](screenshot-testing.md): the maximize double-click targets the visible part of the header bar, so windows wider than the viewport are maximized too.
 * **Update**: New rule in `AGENTS.md` (Network access): agents report blocked hosts to the user immediately, only hosts tested as unreachable, as a paste-ready code block with one host per line, and record them in the app's docs.

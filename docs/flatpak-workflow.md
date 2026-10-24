@@ -4,7 +4,7 @@ title: Flatpak build and install workflow
 description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
 tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T21:45:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -88,7 +88,22 @@ a timeout fails such a run fast instead of letting it run for 6 hours.
 Cross-building aarch64 locally under QEMU works
 but is slow; prefer CI.
 
+# Release for the shared repository
+
+With `release: true`, a push additionally runs the job *Release
+bundles*: it downloads both artifacts and attaches them to the rolling
+GitHub Release `latest` (created on the first run, its tag moved to the
+pushed commit afterwards, assets replaced with `--clobber`). The caller
+must grant `permissions: { contents: write }` to the job. With
+`publish-repo` and the secret `PUBLISH_TOKEN` it then sends
+`repository_dispatch` `app-updated` to that repository; without the
+token it logs a notice and the publish repository's daily run picks the
+release up. See [shared app repository](app-repository.md).
+
 # Install on the phone
+
+The normal way is GNOME Software through the
+[shared app repository](app-repository.md). For testing a single build:
 
 1. Download the `<bundle>-aarch64` artifact from the workflow run (GitHub
    delivers it as a zip) and unzip it.

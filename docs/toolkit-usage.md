@@ -4,7 +4,7 @@ title: Toolkit usage
 description: How an app repository consumes phosh-toolkit for host setup, agent rules and Flatpak CI.
 resource: https://github.com/suitably/phosh-toolkit
 tags: [toolkit, setup, agents, ci]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:26:02Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
 ---
 
 # Layout
@@ -78,8 +78,12 @@ jobs:
 ```
 
 Inputs: `manifest` (required), `bundle` (file name without extension,
-defaults to the app id), `retention-days` (default 14). Details in the
-[Flatpak workflow](flatpak-workflow.md).
+defaults to the app id), `retention-days` (default 14), `release`
+(attach the bundles to the rolling release `latest` on push) and
+`publish-repo` (repository to notify afterwards; needs the secret
+`PUBLISH_TOKEN`). Details in the [Flatpak workflow](flatpak-workflow.md);
+publishing to the phone through GNOME Software is described in
+[shared app repository](app-repository.md).
 
 For a fork of a third-party app, trigger the workflow on the `phosh`
 branch instead of `main`.

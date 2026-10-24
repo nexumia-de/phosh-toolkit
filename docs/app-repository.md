@@ -1,0 +1,100 @@
+---
+type: Playbook
+title: Shared app repository
+description: How all apps are published as one signed Flatpak repository on GitHub Pages (suitably/phosh-apps) so GNOME Software on the phone installs and updates them.
+resource: https://github.com/suitably/phosh-apps
+tags: [flatpak, distribution, repository, gnome-software, pages, ci]
+generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
+sources:
+  - id: flatpak-hosting
+    resource: https://docs.flatpak.org/en/latest/hosting-a-repository.html
+    title: Flatpak documentation, hosting a repository
+  - id: flatpak-repo-files
+    resource: https://docs.flatpak.org/en/latest/repositories.html
+    title: Flatpak documentation, repositories (.flatpakrepo and .flatpakref)
+---
+
+# Goal
+
+Every app stays in its own repository
+([one repository per app](decisions/one-repo-per-app.md)), but the phone
+adds **one** Flatpak remote and then installs and updates all apps from
+GNOME Software. Why not Flathub: [decision](decisions/own-flatpak-repo.md).
+
+# Pieces
+
+```
+app repo (push to main)                    suitably/phosh-apps
+  flatpak.yml (toolkit, release: true)       apps.txt
+   ├─ build x86_64 + aarch64 bundles         publish.yml (dispatch / daily / manual)
+   ├─ release "latest" ◄──── gh release download ── scripts/build-site.sh
+   └─ repository_dispatch "app-updated" ──►     import + sign + build-update-repo
+                                               ─► GitHub Pages
+                                                  https://suitably.github.io/phosh-apps/
+```
+
+1. **App repository**: the reusable [Flatpak workflow](flatpak-workflow.md)
+   with `release: true` attaches `<bundle>-<arch>.flatpak` to the rolling
+   GitHub Release `latest` on every push (release assets do not expire,
+   unlike workflow artifacts). With `publish-repo` and a `PUBLISH_TOKEN`
+   secret it then sends `repository_dispatch` `app-updated`.
+2. **phosh-apps**: `scripts/build-site.sh` downloads the `latest` bundles
+   of every repository in `apps.txt`, creates a fresh ostree repository,
+   `flatpak build-import-bundle --gpg-sign` for each bundle, and
+   `flatpak build-update-repo --gpg-sign` (summary and AppStream
+   branches with icons, which GNOME Software reads).[^flatpak-hosting]
+   It writes `suitably.flatpakrepo`, one `<app-id>.flatpakref` per app
+   (with `RuntimeRepo` = Flathub, so the GNOME runtime comes from there)
+   and an `index.html`.[^flatpak-repo-files] The workflow deploys the
+   result to Pages. It fails if a listed app has no bundle, so an app
+   never silently vanishes.
+3. **Signing**: one GPG key, secret `FLATPAK_GPG_KEY` in phosh-apps; the
+   public key is embedded in the `.flatpakrepo`/`.flatpakref` files.
+
+# Facts verified (2026-10-24, locally, flatpak 1.14 on Ubuntu 24.04)
+
+- `build-import-bundle` keeps the bundle's commit id, so rebuilding the
+  repository from scratch with an unchanged bundle is not an update on
+  the client (`flatpak update` → "Nothing to do").
+- `build-update-repo` creates `appstream/<arch>` and `appstream2/<arch>`
+  with 64 and 128 px icons from the app's SVG; it needs the gdk-pixbuf
+  SVG loader (`librsvg2-common`) like `appstreamcli compose`.
+- An ed25519 signing key works for `remote-add` with `GPGKey=` and for
+  `flatpak install --from <url>.flatpakref`.
+- `build-import-bundle` prints GLib/OSTree `CRITICAL` warnings about a
+  missing remote name but exits 0 and imports correctly.
+
+# Add an app
+
+1. App workflow:
+
+   ```yaml
+   jobs:
+     flatpak:
+       permissions:
+         contents: write
+       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
+       with:
+         manifest: io.github.suitably.MyApp.yml
+         release: true
+         publish-repo: suitably/phosh-apps
+       secrets:
+         PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+   ```
+
+2. Add `owner/repo` to `apps.txt` in phosh-apps.
+
+# On the phone
+
+Open the Pages site and tap an app (GNOME Software handles the
+`.flatpakref`), or add the remote once:
+
+```sh
+flatpak remote-add --user --if-not-exists suitably https://suitably.github.io/phosh-apps/suitably.flatpakrepo
+```
+
+Single bundles from CI still work for testing a branch; see the
+[Flatpak workflow](flatpak-workflow.md).
+
+[^flatpak-hosting]: Flatpak documentation, hosting a repository
+[^flatpak-repo-files]: Flatpak documentation, repositories
