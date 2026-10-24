@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **Update**: New rule in `AGENTS.md` (Network access): agents report blocked hosts to the user immediately, only hosts tested as unreachable, as a paste-ready code block with one host per line, and record them in the app's docs.
 * **Creation**: [Host setup](host-setup.md): `SETUP_PROFILE=ci` lean profile for the validate job, `cage` replaces `weston` (whose VNC/RDP backends pulled in FFmpeg and flite), apt retries stalled downloads.
 * **Update**: CI hardening in [Flatpak workflow](flatpak-workflow.md): job timeouts (validate 15 min, Flatpak build 30 min), apt with `DEBIAN_FRONTEND` passed through `sudo env` and a 120 s dpkg lock timeout, in `setup.sh` and the workflow.
 * **Update**: Root [index](index.md) links [decisions/index.md](decisions/index.md) instead of the directory. The Flatpak CI cache key no longer includes the commit SHA (see [Flatpak workflow](flatpak-workflow.md)).
