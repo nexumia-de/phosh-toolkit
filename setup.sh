@@ -57,6 +57,7 @@ PACKAGES=(
   flatpak
   flatpak-builder
   librsvg2-common       # SVG pixbuf loader, needed by appstreamcli compose
+  elfutils              # eu-strip, needed by flatpak-builder for compiled modules
   weston
 )
 

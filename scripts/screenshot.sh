@@ -133,10 +133,14 @@ const findWindow = () => {
   win = await page.evaluate(findWindow);
 
   // Phosh maximizes every window. Broadway has no window manager, so
-  // double-click the header bar (GTK's default: toggle maximize).
+  // double-click the header bar (GTK's default: toggle maximize). Click the
+  // centre of its visible part: a window with a default width larger than
+  // the viewport extends past the right edge.
   const filled = win.x <= 0 && win.y <= 0 && win.width >= +width && win.height >= +height;
   if (maximize === '1' && !filled) {
-    await page.mouse.dblclick(win.x + win.width / 2, win.y + 23);
+    const left = Math.max(win.x, 0);
+    const right = Math.min(win.x + win.width, +width);
+    await page.mouse.dblclick((left + right) / 2, win.y + 23);
   }
   await page.waitForTimeout(+delay * 1000);
   await page.screenshot({ path: out });
