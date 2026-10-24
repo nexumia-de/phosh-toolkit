@@ -118,10 +118,22 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 - When a request to a host is blocked (proxy `403`, DNS failure, TLS
   refusal, tool error), tell the user **right away** which hosts are
-  needed and why, as an exact list ready to paste into the
-  environment's allowed domains, e.g. `opendata.dwd.de` for DWD radar
-  data. Do not silently work around it or wait until the end of the
-  task.
+  needed and why. Do not silently work around it or wait until the end
+  of the task.
+- List **only hosts you tested and found unreachable** (e.g.
+  `curl -sS -m 15 -o /dev/null https://<host>/`), never hosts you merely
+  expect to be blocked. Put them in a fenced code block, one host per
+  line, without comments, so the user can paste it into the
+  environment's allowed domains:
+
+  ````
+  ```
+  opendata.dwd.de
+  maps.dwd.de
+  ```
+  ````
+
+  Explain what each host is for in the text outside the block.
 - Then continue with the parts that do not need those hosts. Never
   replace blocked data with invented results.
 - Record the required hosts in the app's `docs/` (e.g. a dev
