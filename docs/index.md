@@ -25,4 +25,4 @@ links between concepts. Change history is in [log.md](log.md).
 
 # Decision records
 
-* [Decisions](decisions/) - Why the toolkit and the app repositories are set up the way they are.
+* [Decisions](decisions/index.md) - Why the toolkit and the app repositories are set up the way they are.

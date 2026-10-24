@@ -15,7 +15,7 @@ jobs:
   validate:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up host
         run: ./setup.sh
         env:
@@ -33,7 +33,7 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
           scripts/screenshot.sh -o demo-360x720.png -- python3 examples/adw-demo.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: demo-screenshot
           path: demo-360x720.png

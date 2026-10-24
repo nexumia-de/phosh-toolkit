@@ -4,7 +4,7 @@ title: Flatpak build and install workflow
 description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
 tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:55:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T20:20:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -72,7 +72,8 @@ App repositories call the reusable workflow; see
 (x86_64) and `ubuntu-24.04-arm` (aarch64), installs `flatpak` and
 `flatpak-builder` from apt, lifts Ubuntu's AppArmor restriction on
 unprivileged user namespaces (needed by bubblewrap), caches
-`.flatpak-builder` and uploads `<bundle>-<arch>.flatpak` as an artifact
+`.flatpak-builder` (one cache entry per architecture and manifest hash;
+it is refreshed when the manifest changes) and uploads `<bundle>-<arch>.flatpak` as an artifact
 named `<bundle>-<arch>`. Cross-building aarch64 locally under QEMU works
 but is slow; prefer CI.
 
