@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-24
+* **Update**: [Screenshot testing](screenshot-testing.md) now resolves Playwright from the caller's directory, so a local `node_modules` works (it failed in CI before).
 * **Update**: Made the `X-Purism-FormFactor` rule exact in [Phosh](phosh.md) and [adaptive libadwaita](adaptive-libadwaita.md): case-insensitive substring match on `mobile;`, trailing `;` required, not caught by `desktop-file-validate`.
 * **Update**: Documented the python3/python3-gi version mismatch handling in [screenshot testing](screenshot-testing.md).
 * **Initialization**: Created the bundle with [device](device.md), [Phosh](phosh.md), [adaptive libadwaita](adaptive-libadwaita.md), [screenshot testing](screenshot-testing.md), [Flatpak workflow](flatpak-workflow.md), [toolkit usage](toolkit-usage.md) and the initial [decision records](decisions/).

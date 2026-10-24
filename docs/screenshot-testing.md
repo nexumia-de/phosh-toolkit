@@ -63,6 +63,10 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
 # Requirements
 
 `gtk4-broadwayd` (Ubuntu package `libgtk-4-bin`, installed by `setup.sh`)
-and Node with the `playwright` package and a Chromium it can launch. In
+and Node with the `playwright` package and a Chromium it can launch.
+Playwright is resolved from the current directory (a local
+`node_modules`, e.g. after `npm install --no-save playwright` in the app
+repository), then `NODE_PATH`, then the global npm root. The resolved path
+is passed to the helper script, which runs from a temp directory. In
 environments with a preinstalled Playwright Chromium, do not run
 `playwright install`.

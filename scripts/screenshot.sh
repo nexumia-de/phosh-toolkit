@@ -54,12 +54,17 @@ shift $((OPTIND - 1))
 command -v gtk4-broadwayd >/dev/null || { echo "gtk4-broadwayd not found (install libgtk-4-bin)" >&2; exit 1; }
 command -v node >/dev/null || { echo "node not found" >&2; exit 1; }
 
-# Let Node find a globally installed playwright as well.
-if ! node -e "require('playwright')" >/dev/null 2>&1 && command -v npm >/dev/null; then
+# Resolve playwright from the caller's directory (local node_modules),
+# NODE_PATH or the global npm root. The helper script runs from a temp dir,
+# so it gets the resolved path instead of resolving it itself.
+resolve_playwright() { node -p "require.resolve('playwright')" 2>/dev/null; }
+playwright=$(resolve_playwright) || playwright=
+if [[ -z $playwright ]] && command -v npm >/dev/null; then
   NODE_PATH="$(npm root -g)${NODE_PATH:+:$NODE_PATH}"
   export NODE_PATH
+  playwright=$(resolve_playwright) || playwright=
 fi
-node -e "require('playwright')" >/dev/null 2>&1 || { echo "Node package 'playwright' not found" >&2; exit 1; }
+[[ -n $playwright ]] || { echo "Node package 'playwright' not found" >&2; exit 1; }
 
 # Pick a free Broadway display; display :N listens on port 8080+N.
 port_in_use() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
@@ -91,8 +96,8 @@ port_in_use "$port" || { cat "$workdir/broadwayd.log" >&2; echo "gtk4-broadwayd 
 
 cat >"$workdir/shot.js" <<'EOF'
 const fs = require('fs');
-const { chromium } = require('playwright');
-const [url, out, width, height, scale, delay, maximize, readyFile] = process.argv.slice(2);
+const [playwright, url, out, width, height, scale, delay, maximize, readyFile] = process.argv.slice(2);
+const { chromium } = require(playwright);
 
 // Largest surface element = the window's content area (without CSD shadow).
 const findWindow = () => {
@@ -140,7 +145,7 @@ const findWindow = () => {
 EOF
 
 ready="$workdir/ready"
-node "$workdir/shot.js" "http://127.0.0.1:$port/" "$(realpath -m "$out")" \
+node "$workdir/shot.js" "$playwright" "http://127.0.0.1:$port/" "$(realpath -m "$out")" \
   "$width" "$height" "$scale" "$delay" "$maximize" "$ready" &
 shot_pid=$!
 
