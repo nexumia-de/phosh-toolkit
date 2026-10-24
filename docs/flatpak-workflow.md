@@ -4,7 +4,7 @@ title: Flatpak build and install workflow
 description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
 tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T19:26:02Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-24T19:55:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -46,6 +46,13 @@ also add it for the user:
 Without `--user`, flatpak-builder installs dependencies system-wide.[^flatpak-builder]
 
 Inside containers without FUSE, add `--disable-rofiles-fuse`.
+
+flatpak-builder runs `appstreamcli compose` on the host. It needs the SVG
+gdk-pixbuf loader from `librsvg2-common` to read SVG icons. That package
+is only a Recommends of the appstream stack, so with
+`--no-install-recommends` the build fails with `file-read-error` and
+`filters-but-no-output`. `setup.sh` and the reusable workflow install it
+explicitly.
 
 # Bundle
 

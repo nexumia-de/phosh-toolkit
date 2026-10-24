@@ -56,6 +56,7 @@ PACKAGES=(
   # Packaging and testing
   flatpak
   flatpak-builder
+  librsvg2-common       # SVG pixbuf loader, needed by appstreamcli compose
   weston
 )
 

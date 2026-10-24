@@ -53,7 +53,10 @@ jobs:
       - name: Install Flatpak tooling
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends flatpak flatpak-builder
+          # librsvg2-common provides the SVG pixbuf loader; without it
+          # "appstreamcli compose" cannot read SVG icons (file-read-error).
+          sudo apt-get install -y -q --no-install-recommends \
+            flatpak flatpak-builder librsvg2-common
           # Ubuntu 24.04 restricts unprivileged user namespaces, which
           # bubblewrap needs for the build sandbox.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
