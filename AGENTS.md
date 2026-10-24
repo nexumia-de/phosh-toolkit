@@ -114,6 +114,19 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 - New decisions go into the app's `docs/decisions/` as `type: Decision Record`.
 - Cross-references are plain relative markdown links.
 
+## Network access
+
+- When a request to a host is blocked (proxy `403`, DNS failure, TLS
+  refusal, tool error), tell the user **right away** which hosts are
+  needed and why, as an exact list ready to paste into the
+  environment's allowed domains, e.g. `opendata.dwd.de` for DWD radar
+  data. Do not silently work around it or wait until the end of the
+  task.
+- Then continue with the parts that do not need those hosts. Never
+  replace blocked data with invented results.
+- Record the required hosts in the app's `docs/` (e.g. a dev
+  environment concept) so the next session knows them.
+
 ## Before committing
 
 1. Build and run the tests of the touched project.
