@@ -36,7 +36,8 @@ bash phosh-toolkit/setup.sh
 ```
 
 On a laptop or VM, run the same two lines in the workspace directory.
-`SKIP_FLATHUB=1` skips adding the Flathub remote.
+`SKIP_FLATHUB=1` skips adding the Flathub remote; `SETUP_PROFILE=ci`
+installs only the validation tools (see [host setup](host-setup.md)).
 
 # 2. Agent rules
 

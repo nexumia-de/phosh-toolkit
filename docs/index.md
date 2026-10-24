@@ -20,6 +20,7 @@ links between concepts. Change history is in [log.md](log.md).
 
 # Workflows
 
+* [Host setup](host-setup.md) - What setup.sh installs (full and ci profiles), why cage replaced weston, and the apt hardening.
 * [Flatpak build and install](flatpak-workflow.md) - Build Flatpak bundles locally and in CI, and install them on the phone.
 * [Toolkit usage](toolkit-usage.md) - How an app repository consumes this toolkit.
 
