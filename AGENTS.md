@@ -201,3 +201,25 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 5. `reuse lint` passes; new modules are in `docs/dependencies.md`.
 6. The app's `docs/` updated in the same commit.
 7. Commit message and all texts in English.
+
+## After the task: pull request and CI
+
+The owner wants this done without being asked each time; it is a
+standing instruction for every repository that imports this file.
+
+1. When a task is done and pushed, open a pull request from the working
+   branch into `main` (into `phosh` for forks) in **every repository the
+   task changed**, unless one is already open for that branch. Title and
+   body in English; the body says what changed, why, and how it was
+   verified, and links the related pull requests in the other
+   repositories.
+2. Watch the CI of every pull request you opened until it finishes. On a
+   failure: find the root cause, fix it, validate locally, push, and
+   watch again until CI is green. Never skip or disable a check to get
+   green.
+3. A failure that is not caused by the pull request (red on `main` too,
+   blocked host, missing secret): say so in a comment on the pull request
+   and tell the user what is failing and what is needed.
+4. Report to the user only when all pull requests are green, or what
+   still blocks them, with links to the pull requests.
+5. Do not merge; merging stays with the owner.
