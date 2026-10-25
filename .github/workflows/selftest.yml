@@ -40,6 +40,11 @@ jobs:
           path: demo-360x720.png
 
   flatpak:
+    # The reusable workflow's release job declares contents: write; a
+    # caller must grant at least that or the run fails at startup. The
+    # release job itself is skipped here (release is not set).
+    permissions:
+      contents: write
     uses: ./.github/workflows/flatpak.yml
     with:
       manifest: examples/de.nexumia.PhoshDemo.yml
