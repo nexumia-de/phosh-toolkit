@@ -23,7 +23,8 @@ sources:
 
 [Phosh](phosh.md) on the [target phone](device.md): **360×720 logical px**,
 touch, aarch64, window always maximized. The same app must also work as a
-normal desktop window.
+normal desktop window. Visual styling (colours, typography, icons, text)
+is covered by [visual design](design.md).
 
 # Rules
 

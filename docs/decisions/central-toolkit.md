@@ -23,7 +23,9 @@ rules and CI into each repository would let them drift apart.
 - `AGENTS.md` (shared agent rules),
 - `scripts/screenshot.sh` (phone-size screenshots),
 - `.github/workflows/flatpak.yml` (reusable Flatpak CI),
-- `docs/` (shared knowledge bundle).
+- `docs/` (shared knowledge bundle),
+- shared app runtime code, once a second app needs it (see
+  [code reuse](code-reuse.md)).
 
 App repositories check it out side by side at `../phosh-toolkit` and
 reference it (see [toolkit usage](../toolkit-usage.md)).

@@ -5,5 +5,6 @@
 * [Domain-based names](domain-names.md) - App ids are de.nexumia.* and the repository is served at flatpak.nexumia.de, independent of the code host.
 * [One repository per app](one-repo-per-app.md) - Every app lives in its own repository.
 * [Central toolkit](central-toolkit.md) - Shared setup, rules, scripts and CI live in phosh-toolkit.
+* [Code reuse between apps](code-reuse.md) - Rule of three; shared code moves into phosh-toolkit and apps pin it to a tag.
 * [OKF for documentation](okf-docs.md) - Knowledge is kept as an Open Knowledge Format bundle in docs/.
 * [AGENTS.md for vendor neutrality](agents-md.md) - Agent rules live in AGENTS.md; CLAUDE.md only imports it.

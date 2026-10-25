@@ -16,6 +16,7 @@ links between concepts. Change history is in [log.md](log.md).
 # Guidelines
 
 * [Adaptive libadwaita UI](adaptive-libadwaita.md) - How to build GTK4/libadwaita UIs that work at 360×720 and on the desktop.
+* [Visual design](design.md) - Stock libadwaita styling, colour, typography, icons, text and feedback patterns, with a review checklist.
 * [Screenshot testing](screenshot-testing.md) - How scripts/screenshot.sh renders an app at phone size and its Broadway quirks.
 
 # Workflows

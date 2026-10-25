@@ -1,6 +1,8 @@
 # Directory Update Log
 
 ## 2026-10-25
+* **Creation**: [Visual design](design.md) guideline: stock libadwaita styling, colours only via CSS variables, typography via style classes, symbolic icons, feedback patterns, HIG capitalisation, version notes (CSS variables 1.6, `.dimmed` 1.7, not available on the Ubuntu 24.04 host) and a review checklist. Linked from [adaptive libadwaita UI](adaptive-libadwaita.md); new Design section in `AGENTS.md`.
+* **Creation**: Decision [code reuse between apps](decisions/code-reuse.md): rule of three, shared runtime code in phosh-toolkit pinned to a tag in app manifests, `examples/` as the skeleton for new apps. New Shared code section and two extra pre-commit checks in `AGENTS.md`; [central toolkit](decisions/central-toolkit.md) lists shared code.
 * **Update**: [Flatpak workflow](flatpak-workflow.md) release job deletes `latest` assets the build no longer produces; `--clobber` alone kept the old `io.github.suitably.*` bundles after the rename, and phosh-apps would have published both app ids ([shared app repository](app-repository.md)).
 * **Creation**: Decision [domain-based names](decisions/domain-names.md): app ids `de.nexumia.*`, shared repository at `https://flatpak.nexumia.de/` with remote `nexumia`. Renamed the PhoshDemo example and all `MyApp` snippets; [shared app repository](app-repository.md) documents the custom domain; new app id rule in `AGENTS.md`. Moving only phosh-apps to Codeberg was rejected (its terms forbid mostly AI-written projects).
 
