@@ -1,0 +1,125 @@
+# Reusable workflow: look for newer versions of everything a Flatpak
+# manifest pins and propose them for review.
+#
+# Usage from an app repository (.github/workflows/update-check.yml):
+#
+#   on:
+#     schedule:
+#       - cron: '23 5 * * 1'
+#     workflow_dispatch:
+#   jobs:
+#     update-check:
+#       permissions:
+#         contents: write
+#         pull-requests: write
+#         issues: write
+#       uses: suitably/phosh-toolkit/.github/workflows/update-check.yml@main
+#       with:
+#         manifest: de.nexumia.MyApp.yml
+#       secrets:
+#         UPDATE_TOKEN: ${{ secrets.UPDATE_TOKEN }}
+#
+# Two jobs:
+# - modules: flatpak-external-data-checker reads the x-checker-data of every
+#   source and opens one pull request with all new versions and checksums.
+# - runtime: opens an issue when Flathub has a newer org.gnome.Platform than
+#   the manifest's runtime-version (the checker does not bump runtimes).
+#
+# Pull requests opened with the default GITHUB_TOKEN do not trigger other
+# workflows, so CI would not build them. Store a fine-grained token with
+# contents, pull requests and workflows write access as UPDATE_TOKEN to get
+# CI on update pull requests. See docs/dependency-updates.md.
+name: Update check
+
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        description: Path to the Flatpak manifest, relative to the repository root.
+        required: true
+        type: string
+    secrets:
+      UPDATE_TOKEN:
+        description: Token for update pull requests, so that CI runs on them. Defaults to GITHUB_TOKEN.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  modules:
+    name: Module versions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run flatpak-external-data-checker
+        uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
+        env:
+          GIT_AUTHOR_NAME: Flatpak External Data Checker
+          GIT_COMMITTER_NAME: Flatpak External Data Checker
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN || github.token }}
+        with:
+          args: --update --never-fork ${{ inputs.manifest }}
+
+  runtime:
+    name: GNOME runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare runtime-version with Flathub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MANIFEST: ${{ inputs.manifest }}
+        run: |
+          current=$(python3 - "$MANIFEST" <<'EOF'
+          import json, re, sys
+          text = open(sys.argv[1]).read()
+          if sys.argv[1].endswith(".json"):
+              print(json.loads(text)["runtime-version"])
+          else:
+              print(re.search(r"^runtime-version:\s*['\"]?([^'\"\s]+)", text, re.M).group(1))
+          EOF
+          )
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 update -q
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 \
+            install -y -q --no-install-recommends flatpak
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          # Stable GNOME runtime branches are plain numbers ("51"); this
+          # skips the nightly "master" branch.
+          latest=$(flatpak remote-ls --user flathub --runtime --arch=x86_64 \
+              --columns=application,branch |
+            awk '$1 == "org.gnome.Platform" && $2 ~ /^[0-9]+$/ {print $2}' |
+            sort -n | tail -1)
+          echo "Manifest: $current, Flathub: $latest"
+          if [ -z "$latest" ] || [ "$latest" -le "$current" ]; then
+            exit 0
+          fi
+          title="GNOME runtime $latest is available"
+          if gh issue list --state open --search "in:title \"$title\"" --json number -q '.[].number' | grep -q .; then
+            echo "Issue already open."
+            exit 0
+          fi
+          gh issue create --title "$title" --body "$(cat <<EOF
+          Flathub has \`org.gnome.Platform//$latest\`; \`$MANIFEST\` uses \`$current\`.
+
+          Bump \`runtime-version\` to \`'$latest'\`, rebuild, and check:
+
+          - modules the new runtime now ships (drop them from the manifest),
+          - Python wheels built for the runtime's Python version,
+          - a screenshot at 360×720.
+
+          See phosh-toolkit docs/dependency-updates.md.
+          EOF
+          )"

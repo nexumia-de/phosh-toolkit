@@ -108,6 +108,22 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   [../phosh-toolkit/docs/flatpak-workflow.md](docs/flatpak-workflow.md).
 - Host setup: `bash ../phosh-toolkit/setup.sh` (Ubuntu 24.04, idempotent).
 
+## Dependencies and licences
+
+- Pin every dependency exactly; never float on "latest". Updates come as
+  bot pull requests (update-check workflow, Dependabot). Every manifest
+  source gets `x-checker-data`. See
+  [../phosh-toolkit/docs/dependency-updates.md](docs/dependency-updates.md).
+- Before adding a module: read its licence from the actual files, check
+  it is compatible with the app's licence, list it in the app's
+  `docs/dependencies.md`, and install its licence texts into
+  `/app/share/licenses/<app id>/<module>/`. CI fails otherwise.
+- Every repository is REUSE compliant (`REUSE.toml`, `LICENSES/`);
+  third-party files in the repository get their real holder and licence.
+- Data sources: follow and record their attribution rules, verified
+  against the live terms. See
+  [../phosh-toolkit/docs/licensing.md](docs/licensing.md).
+
 ## Repositories and branches
 
 - One repository per app; shared material lives in phosh-toolkit.
@@ -180,5 +196,6 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
    and the review checklist in
    [../phosh-toolkit/docs/design.md](docs/design.md).
 4. No code duplicated from another app or from phosh-toolkit.
-5. The app's `docs/` updated in the same commit.
-6. Commit message and all texts in English.
+5. `reuse lint` passes; new modules are in `docs/dependencies.md`.
+6. The app's `docs/` updated in the same commit.
+7. Commit message and all texts in English.

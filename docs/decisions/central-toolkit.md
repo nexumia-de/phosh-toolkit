@@ -22,7 +22,8 @@ rules and CI into each repository would let them drift apart.
 - `setup.sh` (host setup),
 - `AGENTS.md` (shared agent rules),
 - `scripts/screenshot.sh` (phone-size screenshots),
-- `.github/workflows/flatpak.yml` (reusable Flatpak CI),
+- `.github/workflows/flatpak.yml` (reusable Flatpak CI with licence
+  checks) and `.github/workflows/update-check.yml` (dependency updates),
 - `docs/` (shared knowledge bundle),
 - shared app runtime code, once a second app needs it (see
   [code reuse](code-reuse.md)).

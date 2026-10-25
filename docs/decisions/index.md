@@ -6,5 +6,6 @@
 * [One repository per app](one-repo-per-app.md) - Every app lives in its own repository.
 * [Central toolkit](central-toolkit.md) - Shared setup, rules, scripts and CI live in phosh-toolkit.
 * [Code reuse between apps](code-reuse.md) - Rule of three; shared code moves into phosh-toolkit and apps pin it to a tag.
+* [Pinned dependencies with automated updates](pinned-dependencies.md) - Exact pins; bots open update pull requests and issues; licences checked in the same CI gate.
 * [OKF for documentation](okf-docs.md) - Knowledge is kept as an Open Knowledge Format bundle in docs/.
 * [AGENTS.md for vendor neutrality](agents-md.md) - Agent rules live in AGENTS.md; CLAUDE.md only imports it.
