@@ -1,5 +1,9 @@
 # Directory Update Log
 
+## 2026-10-25
+* **Update**: [Flatpak workflow](flatpak-workflow.md) release job deletes `latest` assets the build no longer produces; `--clobber` alone kept the old `io.github.suitably.*` bundles after the rename, and phosh-apps would have published both app ids ([shared app repository](app-repository.md)).
+* **Creation**: Decision [domain-based names](decisions/domain-names.md): app ids `de.nexumia.*`, shared repository at `https://flatpak.nexumia.de/` with remote `nexumia`. Renamed the PhoshDemo example and all `MyApp` snippets; [shared app repository](app-repository.md) documents the custom domain; new app id rule in `AGENTS.md`. Moving only phosh-apps to Codeberg was rejected (its terms forbid mostly AI-written projects).
+
 ## 2026-10-24
 * **Creation**: [Shared app repository](app-repository.md) and the decision [own Flatpak repository](decisions/own-flatpak-repo.md): all apps published as one signed Flatpak repository (`suitably/phosh-apps`, GitHub Pages) for GNOME Software. The reusable [Flatpak workflow](flatpak-workflow.md) gained `release`, `publish-repo` and the `PUBLISH_TOKEN` secret.
 * **Update**: [Flatpak workflow](flatpak-workflow.md): `elfutils` (`eu-strip`) is required by flatpak-builder for modules with compiled code; added to `setup.sh` and the reusable workflow. Found while building Wetterblick (libshumate, protobuf-c).

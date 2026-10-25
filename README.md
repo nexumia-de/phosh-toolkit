@@ -51,7 +51,7 @@ jobs:
   flatpak:
     uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
     with:
-      manifest: io.github.suitably.MyApp.yml
+      manifest: de.nexumia.MyApp.yml
 ```
 
 The bundles appear as workflow artifacts `<app-id>-x86_64` and

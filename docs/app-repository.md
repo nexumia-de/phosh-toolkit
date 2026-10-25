@@ -30,25 +30,33 @@ app repo (push to main)                    suitably/phosh-apps
    ├─ release "latest" ◄──── gh release download ── scripts/build-site.sh
    └─ repository_dispatch "app-updated" ──►     import + sign + build-update-repo
                                                ─► GitHub Pages
-                                                  https://suitably.github.io/phosh-apps/
+                                                  https://flatpak.nexumia.de/
 ```
 
 1. **App repository**: the reusable [Flatpak workflow](flatpak-workflow.md)
    with `release: true` attaches `<bundle>-<arch>.flatpak` to the rolling
    GitHub Release `latest` on every push (release assets do not expire,
-   unlike workflow artifacts). With `publish-repo` and a `PUBLISH_TOKEN`
+   unlike workflow artifacts). Assets the build no longer produces
+   (e.g. after an app id rename) are deleted from the release, so the
+   old app does not stay in the shared repository. With `publish-repo` and a `PUBLISH_TOKEN`
    secret it then sends `repository_dispatch` `app-updated`.
 2. **phosh-apps**: `scripts/build-site.sh` downloads the `latest` bundles
    of every repository in `apps.txt`, creates a fresh ostree repository,
    `flatpak build-import-bundle --gpg-sign` for each bundle, and
    `flatpak build-update-repo --gpg-sign` (summary and AppStream
    branches with icons, which GNOME Software reads).[^flatpak-hosting]
-   It writes `suitably.flatpakrepo`, one `<app-id>.flatpakref` per app
+   It writes `nexumia.flatpakrepo`, one `<app-id>.flatpakref` per app
    (with `RuntimeRepo` = Flathub, so the GNOME runtime comes from there)
    and an `index.html`.[^flatpak-repo-files] The workflow deploys the
    result to Pages. It fails if a listed app has no bundle, so an app
    never silently vanishes.
-3. **Signing**: one GPG key, secret `FLATPAK_GPG_KEY` in phosh-apps; the
+3. **Address**: Pages serves the site under the custom domain
+   `flatpak.nexumia.de` (DNS `CNAME` to the owner's `github.io`), so the
+   remote URL survives moving the code
+   ([decision](decisions/domain-names.md)). The workflow reads the URL
+   from `actions/configure-pages`, which returns the custom domain once
+   it is set in the Pages settings.
+4. **Signing**: one GPG key, secret `FLATPAK_GPG_KEY` in phosh-apps; the
    public key is embedded in the `.flatpakrepo`/`.flatpakref` files.
 
 # Facts verified (2026-10-24, locally, flatpak 1.14 on Ubuntu 24.04)
@@ -75,7 +83,7 @@ app repo (push to main)                    suitably/phosh-apps
          contents: write
        uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
        with:
-         manifest: io.github.suitably.MyApp.yml
+         manifest: de.nexumia.MyApp.yml
          release: true
          publish-repo: suitably/phosh-apps
        secrets:
@@ -90,7 +98,7 @@ Open the Pages site and tap an app (GNOME Software handles the
 `.flatpakref`), or add the remote once:
 
 ```sh
-flatpak remote-add --user --if-not-exists suitably https://suitably.github.io/phosh-apps/suitably.flatpakrepo
+flatpak remote-add --user --if-not-exists nexumia https://flatpak.nexumia.de/nexumia.flatpakrepo
 ```
 
 Single bundles from CI still work for testing a branch; see the

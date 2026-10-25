@@ -64,7 +64,7 @@ class DemoWindow(Adw.ApplicationWindow):
 
 class DemoApp(Adw.Application):
     def __init__(self):
-        super().__init__(application_id="io.github.suitably.PhoshDemo")
+        super().__init__(application_id="de.nexumia.PhoshDemo")
 
     def do_activate(self):
         (self.props.active_window or DemoWindow(self)).present()

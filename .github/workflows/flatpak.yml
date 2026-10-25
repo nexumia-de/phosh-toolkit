@@ -6,7 +6,7 @@
 #     flatpak:
 #       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
 #       with:
-#         manifest: io.github.suitably.MyApp.yml
+#         manifest: de.nexumia.MyApp.yml
 #
 # Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
 # its bundle as the artifact "<bundle>-<arch>".
@@ -152,6 +152,13 @@ jobs:
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest" \
               -f sha="$GITHUB_SHA" -F force=true
             gh release upload latest "${files[@]}" --clobber
+            # Drop bundles this build no longer produces (e.g. after an
+            # app id rename), so phosh-apps does not publish them.
+            keep=$(printf '%s\n' "${files[@]##*/}")
+            gh release view latest --json assets -q '.assets[].name' |
+              grep -vxF "$keep" | while read -r old; do
+                gh release delete-asset latest "$old" --yes
+              done
           else
             gh release create latest "${files[@]}" --target "$GITHUB_SHA" \
               --prerelease --title "Latest build" \
