@@ -28,6 +28,7 @@ and an update is one reviewable change. Why:
 | Flatpak module sources (tarballs, wheels, files) | flatpak-external-data-checker in the reusable [update-check workflow](../.github/workflows/update-check.yml), weekly | one pull request with new URLs and checksums |
 | `runtime-version` (GNOME runtime) | same workflow, job `runtime` | an issue "GNOME runtime N is available" |
 | GitHub Actions (`actions/checkout@v7`, …) | Dependabot, `.github/dependabot.yml` in every repository, weekly | one grouped pull request |
+| Playwright for screenshots (`scripts/package.json` in phosh-toolkit) | Dependabot (`npm`, directory `/scripts`), weekly | a pull request |
 | The toolkit's reusable workflows (`@main`) | not pinned; toolkit changes must stay backward compatible ([central toolkit](decisions/central-toolkit.md)) | – |
 
 # x-checker-data per source type

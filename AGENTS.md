@@ -102,6 +102,19 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   desktop-file-validate path/to/*.desktop
   ```
 
+## Releases, changelog and screenshots
+
+- Every pull request that changes something users notice adds a
+  changelog fragment `changelog.d/<slug>.<feature|improvement|fix>.md`
+  with one sentence for users. Internal changes get the label
+  `no-changelog`. Never edit `<release>` elements or version numbers by
+  hand; the release pull request writes them.
+- When a feature is worth showing, add a `[[screenshots.shot]]` to the
+  app's `release.toml` (caption and the `app.*` actions that open the
+  state) and check the pictures locally. Shots use recorded data, never
+  live data.
+- Details: [../phosh-toolkit/docs/releases.md](docs/releases.md).
+
 ## Distribution and CI
 
 - Apps ship as Flatpak (GNOME runtime from Flathub), built for x86_64 and
@@ -204,7 +217,8 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 4. No code duplicated from another app or from phosh-toolkit.
 5. `reuse lint` passes; new modules are in `docs/dependencies.md`.
 6. The app's `docs/` updated in the same commit.
-7. Commit message and all texts in English.
+7. A changelog fragment if users notice the change.
+8. Commit message and all texts in English.
 
 ## After the task: pull request and CI
 

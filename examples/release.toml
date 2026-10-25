@@ -1,0 +1,9 @@
+# Release automation for the demo app (docs/releases.md): changelog
+# fragments in changelog.d/ next to this file, version in the metainfo,
+# and the screenshots CI takes from the built Flatpak. Copy it with the
+# rest of examples/ when starting an app.
+metainfo = "de.nexumia.PhoshDemo.metainfo.xml"
+
+[[screenshots.shot]]
+name = "main"
+caption = "Demo window"
