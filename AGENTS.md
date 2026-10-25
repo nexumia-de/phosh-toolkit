@@ -94,6 +94,12 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   </supports>
   ```
 
+- Support link: every app sets `<url type="donation">` to
+  `https://liberapay.com/suitably` in its metainfo, adds it to the About
+  dialog with `add_link("Support Development", …)`, mentions it in the
+  README and lists it in `.github/FUNDING.yml`. No support prompts in
+  the main UI. Details and wording:
+  [../phosh-toolkit/docs/support.md](docs/support.md).
 - Run before every commit that touches them, and fix all errors and
   warnings:
 
