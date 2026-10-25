@@ -26,8 +26,9 @@ phone. Options:
 
 # Decision
 
-Option 3, as one repository `suitably/phosh-apps` collecting the rolling
-`latest` release of every app repository
+Option 3, as one repository `suitably/phosh-apps` collecting the releases of
+every app repository (originally the rolling release `latest`, now the
+[release channels](release-channels.md))
 ([shared app repository](../app-repository.md)). Apps stay in their own
 repositories ([one repository per app](one-repo-per-app.md)).
 
@@ -35,8 +36,10 @@ repositories ([one repository per app](one-repo-per-app.md)).
 
 - One GPG key for all apps; losing it means every phone must re-add the
   remote, so it must be backed up.
-- Every push to an app's `main` becomes an update on the phone; `main`
-  has to stay installable.
+- Every push to an app's `main` becomes an update on the phone (since
+  2026-10-25 of the nightly app only, see
+  [release channels](release-channels.md)); `main` has to stay
+  installable.
 - Flathub stays possible later for apps that become stable.
 - GitHub Pages limits (1 GB site, soft 100 GB/month traffic) are far
   above the expected size.

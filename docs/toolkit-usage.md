@@ -68,10 +68,13 @@ name: Flatpak
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 jobs:
   flatpak:
+    permissions:
+      contents: write
     uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
     with:
       manifest: de.nexumia.MyApp.yml
@@ -81,7 +84,10 @@ Inputs: `manifest` (required), `bundle` (file name without extension,
 defaults to the app id), `retention-days` (default 14),
 `dependencies-doc` (licence inventory, default `docs/dependencies.md`,
 see [licensing](licensing.md)), `release`
-(attach the bundles to the rolling release `latest` on push) and
+(a tag `v<version>` attaches the bundles to its GitHub Release),
+`nightly` (every push to `main` also builds `<app id>.Devel` and
+attaches it to the pre-release `nightly`; see
+[release channels](flatpak-workflow.md#release-channels)) and
 `publish-repo` (repository to notify afterwards; needs the secret
 `PUBLISH_TOKEN`). Details in the [Flatpak workflow](flatpak-workflow.md);
 publishing to the phone through GNOME Software is described in
