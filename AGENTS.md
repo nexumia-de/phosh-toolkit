@@ -44,6 +44,25 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   See
   [../phosh-toolkit/docs/screenshot-testing.md](docs/screenshot-testing.md).
 
+## Design
+
+- Stock libadwaita look, following the GNOME HIG: no own theme, no
+  branding, no overridden accent colour.
+- Style classes before CSS (`suggested-action`, `boxed-list`, `card`,
+  `title-1`…`4`, `heading`, `caption`, `dimmed`, `numeric`, `osd`). If CSS is
+  unavoidable: colours only via `var(--…)` variables, one `style.css`
+  resource per app, app-prefixed class names.
+- No hard-coded colours or font sizes in UI chrome. Fixed colours are
+  allowed only for data (radar scale) and never as the only carrier of
+  information.
+- Symbolic icons from the icon theme; icon-only buttons get a tooltip and
+  an accessible label.
+- Empty, error and offline states: `AdwStatusPage`, `AdwToast`,
+  `AdwBanner`. Header capitalisation for titles and buttons, sentence
+  capitalisation for descriptions.
+- Full guideline and review checklist:
+  [../phosh-toolkit/docs/design.md](docs/design.md).
+
 ## Metadata
 
 - App id: `de.nexumia.<AppName>` (the owner's domain), never
@@ -89,12 +108,39 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   [../phosh-toolkit/docs/flatpak-workflow.md](docs/flatpak-workflow.md).
 - Host setup: `bash ../phosh-toolkit/setup.sh` (Ubuntu 24.04, idempotent).
 
+## Dependencies and licences
+
+- Pin every dependency exactly; never float on "latest". Updates come as
+  bot pull requests (update-check workflow, Dependabot). Every manifest
+  source gets `x-checker-data`. See
+  [../phosh-toolkit/docs/dependency-updates.md](docs/dependency-updates.md).
+- Before adding a module: read its licence from the actual files, check
+  it is compatible with the app's licence, list it in the app's
+  `docs/dependencies.md`, and install its licence texts into
+  `/app/share/licenses/<app id>/<module>/`. CI fails otherwise.
+- Every repository is REUSE compliant (`REUSE.toml`, `LICENSES/`);
+  third-party files in the repository get their real holder and licence.
+- Data sources: follow and record their attribution rules, verified
+  against the live terms. See
+  [../phosh-toolkit/docs/licensing.md](docs/licensing.md).
+
 ## Repositories and branches
 
 - One repository per app; shared material lives in phosh-toolkit.
 - Forks of third-party apps: work only on a branch named `phosh`. Keep
   `main` identical to upstream so upstream merges stay clean. Never commit
   Phosh changes to `main` of a fork.
+
+## Shared code
+
+- No copy-paste between apps. Code stays in an app until a second app
+  needs it; then it moves into phosh-toolkit and both apps use it from
+  there. Do not generalise code for one app in advance.
+- Shared Python code lives in phosh-toolkit and is pulled into an app's
+  Flatpak manifest pinned to a toolkit tag, never `main`.
+- New apps start from the skeleton in `../phosh-toolkit/examples/`.
+- Details:
+  [../phosh-toolkit/docs/decisions/code-reuse.md](docs/decisions/code-reuse.md).
 
 ## Knowledge
 
@@ -146,6 +192,10 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 1. Build and run the tests of the touched project.
 2. `appstreamcli validate` and `desktop-file-validate` if metadata changed.
-3. `../phosh-toolkit/scripts/screenshot.sh` at 360×720 if the UI changed.
-4. The app's `docs/` updated in the same commit.
-5. Commit message and all texts in English.
+3. `../phosh-toolkit/scripts/screenshot.sh` at 360×720 if the UI changed,
+   and the review checklist in
+   [../phosh-toolkit/docs/design.md](docs/design.md).
+4. No code duplicated from another app or from phosh-toolkit.
+5. `reuse lint` passes; new modules are in `docs/dependencies.md`.
+6. The app's `docs/` updated in the same commit.
+7. Commit message and all texts in English.

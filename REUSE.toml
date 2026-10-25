@@ -1,0 +1,16 @@
+# Licence of every file, for "reuse lint" (https://reuse.software).
+# Licence texts are in LICENSES/; see docs/licensing.md.
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 suitably"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# AppStream metadata is CC0 so stores and distributions can reuse it.
+[[annotations]]
+path = "examples/*.metainfo.xml"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 suitably"
+SPDX-License-Identifier = "CC0-1.0"

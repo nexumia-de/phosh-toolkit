@@ -9,7 +9,14 @@
 #         manifest: de.nexumia.MyApp.yml
 #
 # Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
-# its bundle as the artifact "<bundle>-<arch>".
+# the app bundle "<bundle>-<arch>.flatpak" and the matching source bundle
+# "<bundle>-sources-<arch>.flatpak" (runtime <app id>.Sources, every source
+# the build used) as the artifact "<bundle>-<arch>".
+#
+# Licence checks (docs/licensing.md in phosh-toolkit): the reuse job runs
+# "reuse lint"; every module except the app itself must be listed in
+# dependencies-doc and install its licence texts into
+# /app/share/licenses/<app id>/<module name>/.
 #
 # With "release: true", a push also attaches both bundles to the rolling
 # GitHub Release "latest", from which suitably/phosh-apps publishes them.
@@ -38,6 +45,11 @@ on:
         required: false
         type: boolean
         default: false
+      dependencies-doc:
+        description: File that lists every bundled module with version and licence.
+        required: false
+        type: string
+        default: docs/dependencies.md
       publish-repo:
         description: Repository to notify after a release (repository_dispatch "app-updated").
         required: false
@@ -52,6 +64,14 @@ permissions:
   contents: read
 
 jobs:
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: fsfe/reuse-action@v6
+
   build:
     name: Build (${{ matrix.arch }})
     strategy:
@@ -92,8 +112,37 @@ jobs:
         run: |
           app_id=$(flatpak-builder --show-manifest "$MANIFEST" \
             | python3 -c 'import json,sys; m=json.load(sys.stdin); print(m.get("id") or m["app-id"])')
-          echo "app-id=$app_id" >> "$GITHUB_OUTPUT"
-          echo "bundle=${BUNDLE:-$app_id}" >> "$GITHUB_OUTPUT"
+          # Third-party modules: all modules except the last top-level one,
+          # which is the app itself (its nested modules count as well).
+          {
+            echo "app-id=$app_id"
+            echo "bundle=${BUNDLE:-$app_id}"
+            echo 'modules<<EOF'
+            flatpak-builder --show-manifest "$MANIFEST" | python3 -c '
+          import json, sys
+          def walk(mods):
+              for m in mods:
+                  if isinstance(m, dict):
+                      yield from walk(m.get("modules", []))
+                      yield m["name"]
+          top = json.load(sys.stdin)["modules"]
+          print("\n".join([*walk(top[:-1]), *walk(top[-1].get("modules", []))]))'
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check dependency inventory
+        env:
+          MODULES: ${{ steps.meta.outputs.modules }}
+          DOC: ${{ inputs.dependencies-doc }}
+        run: |
+          [ -n "$MODULES" ] || exit 0
+          [ -f "$DOC" ] || { echo "::error::$DOC is missing; list every bundled module there."; exit 1; }
+          missing=0
+          while read -r name; do
+            grep -qF "\`$name\`" "$DOC" ||
+              { echo "::error file=$DOC::Module $name is not listed in $DOC."; missing=1; }
+          done <<<"$MODULES"
+          exit $missing
 
       - name: Cache flatpak-builder state
         uses: actions/cache@v6
@@ -110,7 +159,26 @@ jobs:
         run: |
           flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
             --ccache --force-clean --arch=${{ matrix.arch }} \
-            --repo=repo build-dir "$MANIFEST"
+            --bundle-sources --repo=repo build-dir "$MANIFEST"
+
+      - name: Check licence files
+        env:
+          APP_ID: ${{ steps.meta.outputs.app-id }}
+          MODULES: ${{ steps.meta.outputs.modules }}
+        run: |
+          [ -n "$MODULES" ] || exit 0
+          missing=0
+          while read -r name; do
+            dir=build-dir/files/share/licenses/$APP_ID/$name
+            files=$(find "$dir" -mindepth 1 -printf '%P ' 2>/dev/null || true)
+            if [ -n "$files" ]; then
+              echo "$name: $files"
+            else
+              echo "::error::Module $name installs no licence files into /app/share/licenses/$APP_ID/$name."
+              missing=1
+            fi
+          done <<<"$MODULES"
+          exit $missing
 
       - name: Bundle
         env:
@@ -120,11 +188,17 @@ jobs:
           flatpak build-bundle --arch=${{ matrix.arch }} \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
             repo "$BUNDLE-${{ matrix.arch }}.flatpak" "$APP_ID"
+          # Corresponding source for the (L)GPL parts, published next to
+          # the app.
+          flatpak build-bundle --arch=${{ matrix.arch }} --runtime \
+            repo "$BUNDLE-sources-${{ matrix.arch }}.flatpak" "$APP_ID.Sources"
 
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}
-          path: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}.flatpak
+          path: |
+            ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}.flatpak
+            ${{ steps.meta.outputs.bundle }}-sources-${{ matrix.arch }}.flatpak
           retention-days: ${{ inputs.retention-days }}
           if-no-files-found: error
 

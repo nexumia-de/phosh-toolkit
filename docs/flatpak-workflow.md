@@ -79,8 +79,20 @@ App repositories call the reusable workflow; see
 `flatpak-builder` from apt, lifts Ubuntu's AppArmor restriction on
 unprivileged user namespaces (needed by bubblewrap), caches
 `.flatpak-builder` (one cache entry per architecture and manifest hash;
-it is refreshed when the manifest changes) and uploads `<bundle>-<arch>.flatpak` as an artifact
-named `<bundle>-<arch>`. The build job has `timeout-minutes: 30`; apt
+it is refreshed when the manifest changes), builds with
+`--bundle-sources` and uploads `<bundle>-<arch>.flatpak` plus the source
+bundle `<bundle>-sources-<arch>.flatpak` (runtime `<app id>.Sources`) as
+an artifact named `<bundle>-<arch>`.
+
+Licence gates (see [licensing](licensing.md)): the `reuse` job runs
+`reuse lint`; before the build, every module except the app must be
+listed in `dependencies-doc` (default `docs/dependencies.md`); after the
+build, every such module must have files in
+`/app/share/licenses/<app id>/<module>/`. Apps without third-party
+modules skip the last two checks.
+
+Updates of the pinned sources come from the separate
+[update-check workflow](dependency-updates.md). The build job has `timeout-minutes: 30`; apt
 runs with `DEBIAN_FRONTEND=noninteractive` passed through `sudo env` (sudo
 drops exported variables) and `-o DPkg::Lock::Timeout=120`. Slow runner
 mirrors happen: one run fetched 166 MB at 144 kB/s and took 19 minutes, so

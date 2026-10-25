@@ -34,7 +34,8 @@ app repo (push to main)                    suitably/phosh-apps
 ```
 
 1. **App repository**: the reusable [Flatpak workflow](flatpak-workflow.md)
-   with `release: true` attaches `<bundle>-<arch>.flatpak` to the rolling
+   with `release: true` attaches `<bundle>-<arch>.flatpak` and the source
+   bundle `<bundle>-sources-<arch>.flatpak` to the rolling
    GitHub Release `latest` on every push (release assets do not expire,
    unlike workflow artifacts). Assets the build no longer produces
    (e.g. after an app id rename) are deleted from the release, so the
@@ -42,7 +43,9 @@ app repo (push to main)                    suitably/phosh-apps
    secret it then sends `repository_dispatch` `app-updated`.
 2. **phosh-apps**: `scripts/build-site.sh` downloads the `latest` bundles
    of every repository in `apps.txt`, creates a fresh ostree repository,
-   `flatpak build-import-bundle --gpg-sign` for each bundle, and
+   `flatpak build-import-bundle --gpg-sign` for each bundle (the source
+   bundles become `runtime/<app id>.Sources` refs, published like on
+   Flathub; see [licensing](licensing.md)), and
    `flatpak build-update-repo --gpg-sign` (summary and AppStream
    branches with icons, which GNOME Software reads).[^flatpak-hosting]
    It writes `nexumia.flatpakrepo`, one `<app-id>.flatpakref` per app

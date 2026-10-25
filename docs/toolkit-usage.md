@@ -78,7 +78,9 @@ jobs:
 ```
 
 Inputs: `manifest` (required), `bundle` (file name without extension,
-defaults to the app id), `retention-days` (default 14), `release`
+defaults to the app id), `retention-days` (default 14),
+`dependencies-doc` (licence inventory, default `docs/dependencies.md`,
+see [licensing](licensing.md)), `release`
 (attach the bundles to the rolling release `latest` on push) and
 `publish-repo` (repository to notify afterwards; needs the secret
 `PUBLISH_TOKEN`). Details in the [Flatpak workflow](flatpak-workflow.md);
@@ -87,6 +89,15 @@ publishing to the phone through GNOME Software is described in
 
 For a fork of a third-party app, trigger the workflow on the `phosh`
 branch instead of `main`.
+
+# 3b. Updates and licences
+
+- `.github/workflows/update-check.yml` calling
+  `suitably/phosh-toolkit/.github/workflows/update-check.yml@main`
+  weekly, and `.github/dependabot.yml` for GitHub Actions. Setup steps:
+  [dependency updates](dependency-updates.md).
+- `REUSE.toml` and `LICENSES/`, `docs/dependencies.md`, and licence
+  installs for every manifest module: [licensing](licensing.md).
 
 # 4. Screenshots
 
