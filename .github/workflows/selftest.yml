@@ -1,5 +1,5 @@
-# Exercises the toolkit itself: validators, screenshot script and the
-# reusable Flatpak workflow with the demo app in examples/.
+# Exercises the toolkit itself: validators, the release and screenshot
+# scripts and the reusable Flatpak workflow with the demo app in examples/.
 name: Self-test
 
 on:
@@ -29,15 +29,23 @@ jobs:
           grep -Eiq '^X-Purism-FormFactor=.*mobile;' examples/*.desktop
       - name: Lint shell scripts
         run: shellcheck setup.sh scripts/*.sh
+      - name: Test the release script
+        run: |
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 \
+            install -y -q --no-install-recommends python3-pytest
+          python3 -m pytest -v tests
+          python3 scripts/release.py --root examples check
       - name: Screenshot demo at 360x720
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
+          npm install --prefix scripts --no-audit --no-fund
+          (cd scripts && npx playwright install --with-deps chromium)
+          export NODE_PATH=$PWD/scripts/node_modules
           scripts/screenshot.sh -o demo-360x720.png -- python3 examples/adw-demo.py
+          scripts/screenshot.sh -c dark -o demo-360x720-dark.png -- python3 examples/adw-demo.py
       - uses: actions/upload-artifact@v7
         with:
           name: demo-screenshot
-          path: demo-360x720.png
+          path: demo-360x720*.png
 
   flatpak:
     # The reusable workflow's release job declares contents: write; a
@@ -48,3 +56,7 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       manifest: examples/de.nexumia.PhoshDemo.yml
+      # Takes the demo's screenshots from the built Flatpak, with the
+      # scripts of this commit rather than main.
+      release-config: examples/release.toml
+      toolkit-ref: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -93,8 +93,21 @@ attaches it to the pre-release `nightly`; see
 publishing to the phone through GNOME Software is described in
 [shared app repository](app-repository.md).
 
+Further inputs for the [release features](releases.md):
+`release-config` (default `release.toml`) and `toolkit-ref` (ref of the
+toolkit scripts, default `main`).
+
 For a fork of a third-party app, trigger the workflow on the `phosh`
 branch instead of `main`.
+
+# 3a. Releases
+
+`release.toml`, `changelog.d/README.md` and
+`.github/workflows/release.yml` calling
+`nexumia-de/phosh-toolkit/.github/workflows/release.yml@main` (the usage
+block at the top of that file), plus the secret `RELEASE_TOKEN` and the
+required check `release / Changelog` in the app's ruleset. See
+[releases](releases.md).
 
 # 3b. Updates and licences
 
@@ -113,7 +126,9 @@ From the app repository:
 ../phosh-toolkit/scripts/screenshot.sh -o shot.png -- <command>
 ```
 
-See [screenshot testing](screenshot-testing.md).
+See [screenshot testing](screenshot-testing.md). Screenshots for the
+metainfo and the release are declared in `release.toml` and taken by CI;
+see [releases](releases.md).
 
 # 5. Knowledge
 

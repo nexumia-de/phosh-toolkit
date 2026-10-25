@@ -97,6 +97,26 @@ build, every such module must have files in
 `/app/share/licenses/<app id>/<module>/`. Apps without third-party
 modules skip the last two checks.
 
+# Release features
+
+With a `release.toml` (input `release-config`, default `release.toml`)
+the workflow also:
+
+- takes the declared screenshots from the built x86_64 Flatpak (phone
+  and desktop size, light and dark) after the bundle step and uploads
+  them as the artifact `<bundle>-screenshots`; this is also the smoke
+  test of the app in its runtime. A tag run fails if the metainfo lists
+  a screenshot that was not taken.
+- creates the GitHub Release of a tag with the metainfo `<release>` as
+  its text and the screenshots as assets,
+- adds a development `<release>` with the pending changelog fragments to
+  the nightly app's metainfo.
+
+The jobs check out phosh-toolkit's scripts at the input `toolkit-ref`
+(default `main`; keep it equal to the ref in `uses:`) and move them out
+of the workspace, because a manifest's `type: dir` source copies the
+workspace into the build. Details: [releases](releases.md).
+
 Updates of the pinned sources come from the separate
 [update-check workflow](dependency-updates.md). The build job has `timeout-minutes: 30`; apt
 runs with `DEBIAN_FRONTEND=noninteractive` passed through `sudo env` (sudo

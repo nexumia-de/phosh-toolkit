@@ -1,0 +1,233 @@
+# Reusable workflow: changelog fragments, release pull requests and release
+# tags for an app repository with a release.toml (docs/releases.md).
+#
+# Usage from an app repository (.github/workflows/release.yml):
+#
+#   on:
+#     pull_request:
+#       types: [opened, synchronize, reopened, labeled, unlabeled]
+#     push:
+#       branches: [main]
+#     schedule:
+#       - cron: '41 6 * * 1'
+#     workflow_dispatch:
+#       inputs:
+#         version:
+#           description: Version to release (default from the fragments)
+#           required: false
+#   jobs:
+#     release:
+#       permissions:
+#         contents: write
+#         pull-requests: write
+#       uses: nexumia-de/phosh-toolkit/.github/workflows/release.yml@main
+#       with:
+#         version: ${{ inputs.version }}
+#       secrets:
+#         RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+#
+# Jobs, by event:
+# - pull_request, "Changelog": validates changelog.d/ and fails if the pull
+#   request changes more than docs, tests and CI without adding a
+#   fragment. Skipped with the label "no-changelog" and for release,
+#   Dependabot and update-check branches.
+# - schedule / workflow_dispatch, "Release pull request": collects the
+#   fragments into the metainfo <release>, bumps the version, lists the
+#   release's screenshots and opens (or updates) the pull request
+#   "Release <version>" from release/v<version>. Without fragments a
+#   scheduled run does nothing.
+# - push to the default branch, "Tag release": when the push changed the
+#   newest metainfo release (the release pull request was merged), creates
+#   the tag v<version>; the Flatpak workflow then builds and publishes it.
+#
+# Pull requests and tags made with GITHUB_TOKEN start no workflows, so the
+# release pull request would get no CI and the tag no build. RELEASE_TOKEN
+# is a fine-grained token with Contents and Pull requests read/write on the
+# app repository.
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version for a manually started release; default from the fragments.
+        required: false
+        type: string
+        default: ''
+      release-config:
+        description: Release configuration file.
+        required: false
+        type: string
+        default: release.toml
+      toolkit-ref:
+        description: Ref of phosh-toolkit whose scripts the jobs use; keep it equal to the ref in "uses:".
+        required: false
+        type: string
+        default: main
+    secrets:
+      RELEASE_TOKEN:
+        description: Token for the release pull request and the tag, so that CI runs on them.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    name: Changelog
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+
+      - name: Check changelog fragments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.head_ref }}
+          NO_CHANGELOG: ${{ contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+          CONFIG: ${{ inputs.release-config }}
+        run: |
+          [[ -f $CONFIG ]] || { echo "::notice::No $CONFIG; nothing to check."; exit 0; }
+          changed=()
+          if [[ $NO_CHANGELOG == true ]]; then
+            echo "Label no-changelog: no fragment needed."
+          elif [[ $HEAD == release/* || $HEAD == dependabot/* || $HEAD == update-* ]]; then
+            echo "Release or dependency update branch: no fragment needed."
+          else
+            # Paths relative to the configuration's directory.
+            root=$(dirname "$CONFIG")
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename' |
+              python3 -c 'import os, sys
+          root = sys.argv[1]
+          for line in sys.stdin:
+              print(os.path.relpath(line.strip(), root))' "$root" > "$RUNNER_TEMP/changed"
+            changed=(--changed "$RUNNER_TEMP/changed")
+          fi
+          python3 .phosh-toolkit/scripts/release.py --root "$(dirname "$CONFIG")" check "${changed[@]}"
+
+  prepare:
+    name: Release pull request
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Require RELEASE_TOKEN
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          [[ -n $TOKEN ]] || { echo "::error::Secret RELEASE_TOKEN is missing; without it the release pull request gets no CI (docs/releases.md in phosh-toolkit)."; exit 1; }
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - uses: actions/checkout@v7
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+      - name: Move the toolkit out of the workspace
+        run: mv .phosh-toolkit "$RUNNER_TEMP/phosh-toolkit"
+
+      - name: Open or update the release pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          CONFIG: ${{ inputs.release-config }}
+          BASE: ${{ github.event.repository.default_branch }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          release=("python3" "$RUNNER_TEMP/phosh-toolkit/scripts/release.py" --root "$(dirname "$CONFIG")")
+          args=(prepare --repo "$GITHUB_REPOSITORY")
+          [[ -n $VERSION ]] && args+=(--version "$VERSION")
+          status=0
+          version=$("${release[@]}" "${args[@]}") || status=$?
+          if ((status == 3)); then
+            if [[ $EVENT == schedule ]]; then
+              echo "::notice::No changelog fragments since the last release; nothing to release."
+              exit 0
+            fi
+            echo "::error::No changelog fragments in changelog.d/; add one before releasing."
+            exit 1
+          fi
+          ((status == 0)) || exit "$status"
+          branch=release/v$version
+          body=$(cat <<EOF
+          Collects the changelog fragments into the release $version: version bumped, \`<release>\` added to the metainfo (GNOME Software, the About dialog and the GitHub release show it), screenshots listed with the URLs of the release assets.
+
+          ## What's new
+
+          $("${release[@]}" notes "$version")
+
+          ## Before merging
+
+          - [ ] The text above reads well for users (edit the metainfo in this branch if not).
+          - [ ] The screenshots in the artifact \`*-screenshots\` of this pull request's Flatpak run look right.
+
+          Merging tags \`v$version\`; the tag build publishes the stable app and attaches the screenshots.
+          EOF
+          )
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -A
+          git commit -q -m "Release $version"
+          git push -q --force origin "$branch"
+          pr=$(gh pr list --head "$branch" --state open --json number -q '.[0].number')
+          if [[ -n $pr ]]; then
+            gh pr edit "$pr" --body "$body"
+          else
+            gh pr create --base "$BASE" --head "$branch" --title "Release $version" --body "$body"
+          fi
+
+  tag:
+    name: Tag release
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: actions/checkout@v7
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+
+      - name: Tag a merged release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          CONFIG: ${{ inputs.release-config }}
+        run: |
+          [[ -f $CONFIG ]] || exit 0
+          root=$(dirname "$CONFIG")
+          release=(python3 .phosh-toolkit/scripts/release.py --root "$root")
+          metainfo=$root/$(python3 -c 'import sys, tomllib
+          print(tomllib.load(open(sys.argv[1], "rb"))["metainfo"])' "$CONFIG")
+          new=$("${release[@]}" latest)
+          old=
+          if git show "HEAD^:$metainfo" > "$RUNNER_TEMP/old.xml" 2>/dev/null; then
+            old=$("${release[@]}" latest --metainfo "$RUNNER_TEMP/old.xml")
+          fi
+          if [[ $new == "$old" ]]; then
+            echo "The newest release is still $new; nothing to tag."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$new" >/dev/null; then
+            echo "::notice::Tag v$new exists already."
+            exit 0
+          fi
+          [[ -n $GH_TOKEN ]] || { echo "::error::Secret RELEASE_TOKEN is missing; a tag made with GITHUB_TOKEN would not start the Flatpak build. Push v$new by hand."; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/v$new" -f "sha=$GITHUB_SHA" >/dev/null
+          echo "::notice::Tagged v$new; the Flatpak workflow publishes it."
