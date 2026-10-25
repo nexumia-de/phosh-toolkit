@@ -158,3 +158,40 @@ def test_metainfo_still_validates(app):
          str(app / "app.metainfo.xml")], capture_output=True, text=True)
     # The fixture lacks required fields; only check the release parts.
     assert "release" not in result.stdout.lower(), result.stdout
+
+
+def test_flathub_manifest_builds_the_app_from_the_tag(tmp_path, capsys):
+    import json
+    manifest = {
+        "id": "de.nexumia.Test",
+        "modules": [
+            {"name": "lib", "sources": [{"type": "archive", "url": "u"}]},
+            {"name": "app", "buildsystem": "meson",
+             "sources": [{"type": "dir", "path": ".", "skip": ["tests"]},
+                         {"type": "file", "path": "extra.txt"}]},
+        ],
+    }
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps(manifest))
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    assert release.main(["flathub-manifest", str(path), "--url",
+                         "https://github.com/o/app.git", "--tag", "v1.2.0",
+                         "--commit", sha]) == 0
+    result = json.loads(capsys.readouterr().out)
+    # Third-party modules stay as they are.
+    assert result["modules"][0] == manifest["modules"][0]
+    git, extra = result["modules"][1]["sources"]
+    assert git == {"type": "git", "url": "https://github.com/o/app.git",
+                   "tag": "v1.2.0", "commit": sha,
+                   "x-checker-data": {"type": "git",
+                                      "tag-pattern": r"^v([\d.]+)$"}}
+    assert extra == {"type": "file", "path": "extra.txt"}
+
+
+def test_flathub_manifest_needs_a_full_commit(tmp_path):
+    import json
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"modules": [
+        {"name": "app", "sources": [{"type": "dir", "path": "."}]}]}))
+    assert release.main(["flathub-manifest", str(path), "--url", "u",
+                         "--tag", "v1", "--commit", "abc1234"]) == 1
