@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-25
+* **Creation**: [Branch protection](branch-protection.md): `.github/rulesets/main.json` in every repository (pull request with 0 approvals, required CI checks with their exact names, no force push or deletion, admin bypass), imported by the owner because agents cannot change repository settings. `AGENTS.md` asks to keep the file in sync when CI jobs are renamed.
 * **Update**: New `AGENTS.md` section "After the task: pull request and CI": agents open a pull request in every repository a finished task changed, watch its CI and fix failures until green, and leave merging to the owner.
 * **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md), `AGENTS.md` and the example metainfo list `pointing` and `keyboard` next to `touch` in `<supports>`. With only `touch` declared, GNOME Software showed "Keyboard not supported" and "Mouse not supported" for Cirro.
 * **Update**: Self-test grants `contents: write` to the reusable Flatpak workflow call. Since the release job (which declares that permission) was added, every self-test run had ended in `startup_failure`; a caller must grant at least what the called workflow's jobs declare.

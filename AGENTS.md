@@ -129,6 +129,10 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 ## Repositories and branches
 
 - One repository per app; shared material lives in phosh-toolkit.
+- `main` is protected by the ruleset in `.github/rulesets/main.json`
+  ([../phosh-toolkit/docs/branch-protection.md](docs/branch-protection.md)).
+  When a CI job is renamed, update the required check names there in
+  the same pull request and tell the owner to re-import it.
 - Forks of third-party apps: work only on a branch named `phosh`. Keep
   `main` identical to upstream so upstream merges stay clean. Never commit
   Phosh changes to `main` of a fork.
