@@ -36,7 +36,9 @@ app repo (push to main)                    suitably/phosh-apps
 1. **App repository**: the reusable [Flatpak workflow](flatpak-workflow.md)
    with `release: true` attaches `<bundle>-<arch>.flatpak` to the rolling
    GitHub Release `latest` on every push (release assets do not expire,
-   unlike workflow artifacts). With `publish-repo` and a `PUBLISH_TOKEN`
+   unlike workflow artifacts). Assets the build no longer produces
+   (e.g. after an app id rename) are deleted from the release, so the
+   old app does not stay in the shared repository. With `publish-repo` and a `PUBLISH_TOKEN`
    secret it then sends `repository_dispatch` `app-updated`.
 2. **phosh-apps**: `scripts/build-site.sh` downloads the `latest` bundles
    of every repository in `apps.txt`, creates a fresh ostree repository,

@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-10-25
+* **Update**: [Flatpak workflow](flatpak-workflow.md) release job deletes `latest` assets the build no longer produces; `--clobber` alone kept the old `io.github.suitably.*` bundles after the rename, and phosh-apps would have published both app ids ([shared app repository](app-repository.md)).
 * **Creation**: Decision [domain-based names](decisions/domain-names.md): app ids `de.nexumia.*`, shared repository at `https://flatpak.nexumia.de/` with remote `nexumia`. Renamed the PhoshDemo example and all `MyApp` snippets; [shared app repository](app-repository.md) documents the custom domain; new app id rule in `AGENTS.md`. Moving only phosh-apps to Codeberg was rejected (its terms forbid mostly AI-written projects).
 
 ## 2026-10-24
