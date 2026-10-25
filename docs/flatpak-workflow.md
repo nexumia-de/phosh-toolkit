@@ -97,6 +97,37 @@ build, every such module must have files in
 `/app/share/licenses/<app id>/<module>/`. Apps without third-party
 modules skip the last two checks.
 
+# Flathub linter
+
+The job *Flathub linter* runs `flatpak-builder-lint manifest` from
+Flathub's `org.flatpak.Builder` on every run. It checks what reviewers
+check on Flathub: permissions (e.g. `--socket=x11` next to
+`fallback-x11`, `flatpak-spawn` access), module and metadata wiring,
+app id and file names. One rule is excepted, through a file written
+with the app's id (the linter's user exceptions are per app id; `"*"`
+is not accepted):
+
+| Rule | Why excepted |
+|---|---|
+| `appid-url-not-reachable` | Flathub's ownership check that `https://<domain of the app id>` serves a page; our repository is not Flathub. |
+
+Found when running it on Cirro and the demo app (2026-10-25, linter from
+Flathub `stable`): the manifests are clean. The `repo` check on a built
+repository adds two Flathub-only findings, which is why CI runs the
+`manifest` check only: `appstream-screenshots-not-mirrored-in-ostree`
+(Flathub copies screenshots into its repository; ours stay on the GitHub
+Release, see [releases](releases.md)) and `metainfo-missing-screenshots`
+(true until an app's first release lists them).
+
+Locally (in the cloud dev container also add
+`--filesystem=/root/.ccr:ro --env=SSL_CERT_FILE=/root/.ccr/ca-bundle.crt`,
+and the domain check fails there because the proxy blocks `nexumia.de`):
+
+```sh
+flatpak install --user flathub org.flatpak.Builder
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest de.nexumia.MyApp.yml
+```
+
 # Release features
 
 With a `release.toml` (input `release-config`, default `release.toml`)
@@ -124,7 +155,8 @@ drops exported variables) and `-o DPkg::Lock::Timeout=120`. Slow runner
 mirrors happen: one run fetched 166 MB at 144 kB/s and took 19 minutes, so
 a timeout fails such a run fast instead of letting it run for 6 hours.
 Cross-building aarch64 locally under QEMU works
-but is slow; prefer CI.
+but is slow; prefer CI. The jobs run on the plain Ubuntu runners, not in
+Flathub's build container ([decision](decisions/ci-build-environment.md)).
 
 # Release channels
 

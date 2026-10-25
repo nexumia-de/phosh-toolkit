@@ -27,7 +27,7 @@ workspace/
 repositories; the same lines work on a laptop or VM):
 
 ```sh
-[ -d phosh-toolkit ] || git clone https://github.com/suitably/phosh-toolkit.git
+[ -d phosh-toolkit ] || git clone https://github.com/nexumia-de/phosh-toolkit.git
 bash phosh-toolkit/setup.sh
 ```
 
@@ -49,7 +49,7 @@ name: Flatpak
 on: [push, pull_request, workflow_dispatch]
 jobs:
   flatpak:
-    uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
     with:
       manifest: de.nexumia.MyApp.yml
 ```

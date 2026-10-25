@@ -125,7 +125,7 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 - Apps ship as Flatpak (GNOME runtime from Flathub), built for x86_64 and
   aarch64 with the reusable workflow
-  `suitably/phosh-toolkit/.github/workflows/flatpak.yml`. See
+  `nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml`. See
   [../phosh-toolkit/docs/flatpak-workflow.md](docs/flatpak-workflow.md).
 - Host setup: `bash ../phosh-toolkit/setup.sh` (Ubuntu 24.04, idempotent).
 
@@ -133,7 +133,8 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 - Pin every dependency exactly; never float on "latest". Updates come as
   bot pull requests (update-check workflow, Dependabot). Every manifest
-  source gets `x-checker-data`. See
+  source gets `x-checker-data`. GitHub Actions are pinned to a commit
+  SHA with the release as comment (`@<sha> # v7.0.1`). See
   [../phosh-toolkit/docs/dependency-updates.md](docs/dependency-updates.md).
 - Before adding a module: read its licence from the actual files, check
   it is compatible with the app's licence, list it in the app's
