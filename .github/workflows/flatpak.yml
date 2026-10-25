@@ -6,7 +6,7 @@
 #     flatpak:
 #       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
 #       with:
-#         manifest: io.github.suitably.MyApp.yml
+#         manifest: de.nexumia.MyApp.yml
 #
 # Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
 # its bundle as the artifact "<bundle>-<arch>".

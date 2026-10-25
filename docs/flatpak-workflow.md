@@ -19,7 +19,7 @@ sources:
 Every app ships as a Flatpak (see the
 [decision record](decisions/flatpak-distribution.md)). Each app repository
 contains a manifest named after its app id, e.g.
-`io.github.suitably.MyApp.yml`, using the GNOME runtime from Flathub.
+`de.nexumia.MyApp.yml`, using the GNOME runtime from Flathub.
 
 # Manifest conventions
 
@@ -30,14 +30,14 @@ contains a manifest named after its app id, e.g.
   explain why in the app's docs.
 - Install the `.desktop` file, metainfo and icon under the app id.
 - A minimal working manifest is
-  [`examples/io.github.suitably.PhoshDemo.yml`](../examples/io.github.suitably.PhoshDemo.yml).
+  [`examples/de.nexumia.PhoshDemo.yml`](../examples/de.nexumia.PhoshDemo.yml).
 
 # Local build (x86_64)
 
 ```sh
 flatpak-builder --user --install-deps-from=flathub --force-clean \
-  --install build-dir io.github.suitably.MyApp.yml
-flatpak run io.github.suitably.MyApp
+  --install build-dir de.nexumia.MyApp.yml
+flatpak run de.nexumia.MyApp
 ```
 
 `setup.sh` adds the Flathub remote **system-wide**. For `--user` builds
@@ -63,8 +63,8 @@ and the reusable workflow install it explicitly.
 # Bundle
 
 ```sh
-flatpak-builder --repo=repo --force-clean build-dir io.github.suitably.MyApp.yml
-flatpak build-bundle repo MyApp.flatpak io.github.suitably.MyApp \
+flatpak-builder --repo=repo --force-clean build-dir de.nexumia.MyApp.yml
+flatpak build-bundle repo MyApp.flatpak de.nexumia.MyApp \
   --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
@@ -113,11 +113,11 @@ The normal way is GNOME Software through the
    ```sh
    flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
    flatpak install --user ./MyApp-aarch64.flatpak
-   flatpak run io.github.suitably.MyApp
+   flatpak run de.nexumia.MyApp
    ```
 
 4. Updating: install the newer bundle the same way; `flatpak uninstall
-   io.github.suitably.MyApp` removes it.
+   de.nexumia.MyApp` removes it.
 
 [^flatpak-builder]: Flatpak documentation, flatpak-builder
 [^flatpak-bundles]: Flatpak documentation, single-file bundles

@@ -1,6 +1,6 @@
 # Flatpak manifest for the demo app. Used by .github/workflows/selftest.yml
 # to exercise the reusable Flatpak workflow.
-id: io.github.suitably.PhoshDemo
+id: de.nexumia.PhoshDemo
 runtime: org.gnome.Platform
 runtime-version: '51'
 sdk: org.gnome.Sdk
@@ -22,8 +22,8 @@ modules:
       - type: file
         path: adw-demo.py
       - type: file
-        path: io.github.suitably.PhoshDemo.desktop
+        path: de.nexumia.PhoshDemo.desktop
       - type: file
-        path: io.github.suitably.PhoshDemo.metainfo.xml
+        path: de.nexumia.PhoshDemo.metainfo.xml
       - type: file
-        path: io.github.suitably.PhoshDemo.svg
+        path: de.nexumia.PhoshDemo.svg

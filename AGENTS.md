@@ -46,6 +46,9 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 ## Metadata
 
+- App id: `de.nexumia.<AppName>` (the owner's domain), never
+  `io.github.*`; files are named after it. Why:
+  [../phosh-toolkit/docs/decisions/domain-names.md](docs/decisions/domain-names.md).
 - `.desktop` file: `X-Purism-FormFactor=Workstation;Mobile;` exactly,
   **including the trailing `;`**. Phosh's app grid hides an app in mobile
   mode unless this value contains the substring `mobile;`; the match is

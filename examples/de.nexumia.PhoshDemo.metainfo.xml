@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.suitably.PhoshDemo</id>
+  <id>de.nexumia.PhoshDemo</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Phosh Demo</name>
@@ -12,12 +12,12 @@
       screens and is used to test the Phosh toolkit.
     </p>
   </description>
-  <developer id="io.github.suitably">
+  <developer id="de.nexumia">
     <name>suitably</name>
   </developer>
   <url type="homepage">https://github.com/suitably/phosh-toolkit</url>
   <url type="bugtracker">https://github.com/suitably/phosh-toolkit/issues</url>
-  <launchable type="desktop-id">io.github.suitably.PhoshDemo.desktop</launchable>
+  <launchable type="desktop-id">de.nexumia.PhoshDemo.desktop</launchable>
   <content_rating type="oars-1.1"/>
   <recommends>
     <display_length compare="ge">360</display_length>

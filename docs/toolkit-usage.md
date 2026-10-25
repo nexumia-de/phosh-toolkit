@@ -74,7 +74,7 @@ jobs:
   flatpak:
     uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
     with:
-      manifest: io.github.suitably.MyApp.yml
+      manifest: de.nexumia.MyApp.yml
 ```
 
 Inputs: `manifest` (required), `bundle` (file name without extension,

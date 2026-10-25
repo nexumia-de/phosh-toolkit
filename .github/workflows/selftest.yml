@@ -42,4 +42,4 @@ jobs:
   flatpak:
     uses: ./.github/workflows/flatpak.yml
     with:
-      manifest: examples/io.github.suitably.PhoshDemo.yml
+      manifest: examples/de.nexumia.PhoshDemo.yml
