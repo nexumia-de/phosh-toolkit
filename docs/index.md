@@ -26,6 +26,7 @@ links between concepts. Change history is in [log.md](log.md).
 * [Shared app repository](app-repository.md) - Publish all apps as one Flatpak repository that GNOME Software on the phone installs and updates from.
 * [Dependency updates](dependency-updates.md) - Pinned versions kept current by the update-check workflow (Flatpak modules, GNOME runtime) and Dependabot (GitHub Actions).
 * [Licensing](licensing.md) - REUSE for own files, licence inventory, licence texts and source bundles for bundled code, data attribution.
+* [Branch protection](branch-protection.md) - Ruleset files that keep main behind pull requests with green CI, and how to import them.
 * [Toolkit usage](toolkit-usage.md) - How an app repository consumes this toolkit.
 
 # Decision records
