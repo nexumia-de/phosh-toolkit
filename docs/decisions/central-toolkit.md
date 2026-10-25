@@ -17,7 +17,7 @@ rules and CI into each repository would let them drift apart.
 
 # Decision
 
-`suitably/phosh-toolkit` is the single source for:
+`nexumia-de/phosh-toolkit` is the single source for:
 
 - `setup.sh` (host setup),
 - `AGENTS.md` (shared agent rules),

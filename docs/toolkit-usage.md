@@ -2,7 +2,7 @@
 type: Playbook
 title: Toolkit usage
 description: How an app repository consumes phosh-toolkit for host setup, agent rules and Flatpak CI.
-resource: https://github.com/suitably/phosh-toolkit
+resource: https://github.com/nexumia-de/phosh-toolkit
 tags: [toolkit, setup, agents, ci]
 generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
 ---
@@ -31,7 +31,7 @@ In a cloud agent environment, put this in the environment setup script,
 which runs in the directory above the repositories:
 
 ```sh
-[ -d phosh-toolkit ] || git clone https://github.com/suitably/phosh-toolkit.git
+[ -d phosh-toolkit ] || git clone https://github.com/nexumia-de/phosh-toolkit.git
 bash phosh-toolkit/setup.sh
 ```
 
@@ -75,7 +75,7 @@ jobs:
   flatpak:
     permissions:
       contents: write
-    uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
     with:
       manifest: de.nexumia.MyApp.yml
 ```
@@ -112,7 +112,7 @@ required check `release / Changelog` in the app's ruleset. See
 # 3b. Updates and licences
 
 - `.github/workflows/update-check.yml` calling
-  `suitably/phosh-toolkit/.github/workflows/update-check.yml@main`
+  `nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@main`
   weekly, and `.github/dependabot.yml` for GitHub Actions. Setup steps:
   [dependency updates](dependency-updates.md).
 - `REUSE.toml` and `LICENSES/`, `docs/dependencies.md`, and licence
