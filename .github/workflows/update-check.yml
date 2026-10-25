@@ -13,7 +13,7 @@
 #         contents: write
 #         pull-requests: write
 #         issues: write
-#       uses: suitably/phosh-toolkit/.github/workflows/update-check.yml@main
+#       uses: nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@main
 #       with:
 #         manifest: de.nexumia.MyApp.yml
 #       secrets:
@@ -55,7 +55,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run flatpak-external-data-checker
         uses: docker://ghcr.io/flathub/flatpak-external-data-checker:latest
@@ -75,7 +75,7 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Compare runtime-version with Flathub
         env:
