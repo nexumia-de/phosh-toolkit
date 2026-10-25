@@ -91,9 +91,17 @@ AppStream metainfo:[^as-relations]
   <display_length compare="ge">360</display_length>
 </recommends>
 <supports>
+  <control>pointing</control>
+  <control>keyboard</control>
   <control>touch</control>
 </supports>
 ```
+
+List every input method the app handles, not only `touch`. Once an app
+declares any `<control>`, GNOME Software treats the unlisted ones as
+unsupported and shows "Keyboard not supported" and "Mouse not supported"
+on the app page. Every app here must also work as a desktop window, so
+`pointing` and `keyboard` belong in `<supports>` as well.
 
 Validate both before every commit:
 

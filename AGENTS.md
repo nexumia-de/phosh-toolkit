@@ -88,6 +88,8 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
     <display_length compare="ge">360</display_length>
   </recommends>
   <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
     <control>touch</control>
   </supports>
   ```
