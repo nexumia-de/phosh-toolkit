@@ -17,6 +17,7 @@
   </developer>
   <url type="homepage">https://github.com/suitably/phosh-toolkit</url>
   <url type="bugtracker">https://github.com/suitably/phosh-toolkit/issues</url>
+  <url type="donation">https://liberapay.com/suitably</url>
   <launchable type="desktop-id">de.nexumia.PhoshDemo.desktop</launchable>
   <content_rating type="oars-1.1"/>
   <recommends>
