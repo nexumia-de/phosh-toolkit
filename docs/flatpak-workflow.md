@@ -84,6 +84,12 @@ it is refreshed when the manifest changes), builds with
 bundle `<bundle>-sources-<arch>.flatpak` (runtime `<app id>.Sources`) as
 an artifact named `<bundle>-<arch>`.
 
+Reference the workflow under the repository's current owner,
+`nexumia-de/phosh-toolkit`. The redirect from the old name
+`suitably/phosh-toolkit` resolves `@main`, but a call to a branch
+(`@<branch>`, e.g. to try a toolkit pull request from an app) failed at
+startup without any job or log (2026-10-25).
+
 Licence gates (see [licensing](licensing.md)): the `reuse` job runs
 `reuse lint`; before the build, every module except the app must be
 listed in `dependencies-doc` (default `docs/dependencies.md`); after the
