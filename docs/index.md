@@ -22,7 +22,7 @@ links between concepts. Change history is in [log.md](log.md).
 # Workflows
 
 * [Host setup](host-setup.md) - What setup.sh installs (full and ci profiles), why cage replaced weston, and the apt hardening.
-* [Flatpak build and install](flatpak-workflow.md) - Build Flatpak bundles locally and in CI, and install them on the phone.
+* [Flatpak build and install](flatpak-workflow.md) - Build Flatpak bundles locally and in CI, publish the stable (tags) and nightly (main) channels, and install them on the phone.
 * [Shared app repository](app-repository.md) - Publish all apps as one Flatpak repository that GNOME Software on the phone installs and updates from.
 * [Dependency updates](dependency-updates.md) - Pinned versions kept current by the update-check workflow (Flatpak modules, GNOME runtime) and Dependabot (GitHub Actions).
 * [Licensing](licensing.md) - REUSE for own files, licence inventory, licence texts and source bundles for bundled code, data attribution.

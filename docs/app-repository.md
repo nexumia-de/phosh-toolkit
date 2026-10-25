@@ -4,7 +4,7 @@ title: Shared app repository
 description: How all apps are published as one signed Flatpak repository on GitHub Pages (suitably/phosh-apps) so GNOME Software on the phone installs and updates them.
 resource: https://github.com/suitably/phosh-apps
 tags: [flatpak, distribution, repository, gnome-software, pages, ci]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
+generated: { by: claude-code/2.1.310, at: 2026-10-25T16:00:00Z }
 sources:
   - id: flatpak-hosting
     resource: https://docs.flatpak.org/en/latest/hosting-a-repository.html
@@ -24,25 +24,30 @@ GNOME Software. Why not Flathub: [decision](decisions/own-flatpak-repo.md).
 # Pieces
 
 ```
-app repo (push to main)                    suitably/phosh-apps
-  flatpak.yml (toolkit, release: true)       apps.txt
+app repo (tag v*, push to main)            suitably/phosh-apps
+  flatpak.yml (toolkit, release + nightly)   apps.txt
    ├─ build x86_64 + aarch64 bundles         publish.yml (dispatch / daily / manual)
-   ├─ release "latest" ◄──── gh release download ── scripts/build-site.sh
+   ├─ release v<version>, "nightly" ◄── gh release download ── scripts/build-site.sh
    └─ repository_dispatch "app-updated" ──►     import + sign + build-update-repo
                                                ─► GitHub Pages
                                                   https://flatpak.nexumia.de/
 ```
 
 1. **App repository**: the reusable [Flatpak workflow](flatpak-workflow.md)
-   with `release: true` attaches `<bundle>-<arch>.flatpak` and the source
-   bundle `<bundle>-sources-<arch>.flatpak` to the rolling
-   GitHub Release `latest` on every push (release assets do not expire,
-   unlike workflow artifacts). Assets the build no longer produces
-   (e.g. after an app id rename) are deleted from the release, so the
+   attaches `<bundle>-<arch>.flatpak` and the source bundle
+   `<bundle>-sources-<arch>.flatpak` to GitHub Releases (release assets
+   do not expire, unlike workflow artifacts), one per
+   [release channel](flatpak-workflow.md#release-channels): with
+   `release: true` a tag `v<version>` gets its own release (stable app),
+   with `nightly: true` every push to `main` replaces the assets of the
+   pre-release `nightly` (app `<app id>.Devel`). Assets the nightly build
+   no longer produces (e.g. after an app id rename) are deleted, so the
    old app does not stay in the shared repository. With `publish-repo` and a `PUBLISH_TOKEN`
    secret it then sends `repository_dispatch` `app-updated`.
-2. **phosh-apps**: `scripts/build-site.sh` downloads the `latest` bundles
-   of every repository in `apps.txt`, creates a fresh ostree repository,
+2. **phosh-apps**: `scripts/build-site.sh` downloads, for every
+   repository in `apps.txt`, the bundles of its newest non-pre-release
+   release (stable; missing one fails the run) and of the pre-release
+   `nightly` if it exists, creates a fresh ostree repository,
    `flatpak build-import-bundle --gpg-sign` for each bundle (the source
    bundles become `runtime/<app id>.Sources` refs, published like on
    Flathub; see [licensing](licensing.md)), and
@@ -88,12 +93,18 @@ app repo (push to main)                    suitably/phosh-apps
        with:
          manifest: de.nexumia.MyApp.yml
          release: true
+         nightly: true
          publish-repo: suitably/phosh-apps
        secrets:
          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
    ```
 
-2. Add `owner/repo` to `apps.txt` in phosh-apps.
+   Trigger it on `push` to `main` and on tags `v*` (see the
+   [Flatpak workflow](flatpak-workflow.md#release-channels)); with
+   `nightly: true` the app's meson needs the options `profile` and
+   `build_label`.
+2. Push the first tag `v<version>`, then add `owner/repo` to `apps.txt`
+   in phosh-apps (an app without a stable release fails the publish run).
 
 # On the phone
 
@@ -104,7 +115,9 @@ Open the Pages site and tap an app (GNOME Software handles the
 flatpak remote-add --user --if-not-exists nexumia https://flatpak.nexumia.de/nexumia.flatpakrepo
 ```
 
-Single bundles from CI still work for testing a branch; see the
+GNOME Software lists the stable app ("Cirro") and the nightly app
+("Cirro (Nightly)") separately; they install side by side. Single
+bundles from CI still work for testing a pull request; see the
 [Flatpak workflow](flatpak-workflow.md).
 
 [^flatpak-hosting]: Flatpak documentation, hosting a repository

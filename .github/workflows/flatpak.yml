@@ -1,12 +1,23 @@
-# Reusable workflow: build Flatpak bundles for x86_64 and aarch64.
+# Reusable workflow: build Flatpak bundles for x86_64 and aarch64 and
+# publish the stable and the nightly channel.
 #
-# Usage from an app repository:
+# Usage from an app repository (docs/flatpak-workflow.md):
 #
+#   on:
+#     push:
+#       branches: [main]
+#       tags: ['v*']
+#     pull_request:
+#     workflow_dispatch:
 #   jobs:
 #     flatpak:
+#       permissions:
+#         contents: write
 #       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
 #       with:
 #         manifest: de.nexumia.MyApp.yml
+#         release: true
+#         nightly: true
 #
 # Each architecture builds natively (aarch64 on ubuntu-24.04-arm) and uploads
 # the app bundle "<bundle>-<arch>.flatpak" and the matching source bundle
@@ -18,9 +29,15 @@
 # dependencies-doc and install its licence texts into
 # /app/share/licenses/<app id>/<module name>/.
 #
-# With "release: true", a push also attaches both bundles to the rolling
-# GitHub Release "latest", from which suitably/phosh-apps publishes them.
-# The calling job then needs "permissions: { contents: write }".
+# Channels (docs/flatpak-workflow.md, "Release channels"):
+# - Stable, with "release: true": a pushed tag v<version> attaches the
+#   bundles to the GitHub Release of that tag.
+# - Nightly, with "nightly: true": every push to the default branch
+#   also builds the app id <app id>.Devel with -Dprofile=development and
+#   -Dbuild_label="<branch> · <commit>" and attaches it to the
+#   pre-release "nightly".
+# The calling job must grant "contents: write" (a caller must grant what
+# the jobs below declare, even for jobs that are skipped).
 name: Flatpak
 
 on:
@@ -41,7 +58,12 @@ on:
         type: number
         default: 14
       release:
-        description: On push, attach the bundles to the rolling release "latest".
+        description: On a pushed tag v<version>, attach the bundles to its GitHub Release.
+        required: false
+        type: boolean
+        default: false
+      nightly:
+        description: On a push to the default branch, also build the nightly app <app id>.Devel and attach it to the release "nightly".
         required: false
         type: boolean
         default: false
@@ -73,10 +95,14 @@ jobs:
       - uses: fsfe/reuse-action@v6
 
   build:
-    name: Build (${{ matrix.arch }})
+    # Stable keeps the plain name, which branch rulesets require.
+    name: ${{ matrix.variant == 'nightly' && format('Build nightly ({0})', matrix.arch) || format('Build ({0})', matrix.arch) }}
     strategy:
       fail-fast: false
       matrix:
+        arch: [x86_64, aarch64]
+        # Nightly only for pushes to the default branch.
+        variant: ${{ fromJSON(inputs.nightly && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && '["stable", "nightly"]' || '["stable"]') }}
         include:
           - arch: x86_64
             runner: ubuntu-24.04
@@ -104,19 +130,47 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
+      - name: Prepare manifest
+        id: manifest
+        env:
+          MANIFEST: ${{ inputs.manifest }}
+          VARIANT: ${{ matrix.variant }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [[ $VARIANT != nightly ]]; then
+            echo "path=$MANIFEST" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Nightly: app id <app id>.Devel; the app module (the last one)
+          # gets -Dprofile=development and -Dbuild_label. Written next to
+          # the manifest so relative source paths still resolve.
+          out=$(dirname "$MANIFEST")/nightly-manifest.json
+          flatpak-builder --show-manifest "$MANIFEST" | python3 -c '
+          import json, sys
+          m = json.load(sys.stdin)
+          key = "id" if "id" in m else "app-id"
+          m[key] += ".Devel"
+          m["modules"][-1].setdefault("config-opts", []).extend(
+              ["-Dprofile=development", "-Dbuild_label=" + sys.argv[1]])
+          json.dump(m, sys.stdout, indent=2, ensure_ascii=False)' "$BRANCH · ${GITHUB_SHA::7}" > "$out"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+
       - name: Read app id
         id: meta
         env:
-          MANIFEST: ${{ inputs.manifest }}
+          MANIFEST: ${{ steps.manifest.outputs.path }}
           BUNDLE: ${{ inputs.bundle }}
+          VARIANT: ${{ matrix.variant }}
         run: |
           app_id=$(flatpak-builder --show-manifest "$MANIFEST" \
             | python3 -c 'import json,sys; m=json.load(sys.stdin); print(m.get("id") or m["app-id"])')
+          bundle=${BUNDLE:-$app_id}
+          if [[ -n $BUNDLE && $VARIANT == nightly ]]; then bundle+=.Devel; fi
           # Third-party modules: all modules except the last top-level one,
           # which is the app itself (its nested modules count as well).
           {
             echo "app-id=$app_id"
-            echo "bundle=${BUNDLE:-$app_id}"
+            echo "bundle=$bundle"
             echo 'modules<<EOF'
             flatpak-builder --show-manifest "$MANIFEST" | python3 -c '
           import json, sys
@@ -148,14 +202,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .flatpak-builder
-          # One entry per arch and manifest version (no per-run entries).
-          key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles(inputs.manifest) }}
+          # One entry per arch, variant and manifest version (no per-run
+          # entries); both variants share the third-party modules.
+          key: flatpak-builder-${{ matrix.arch }}-${{ matrix.variant }}-${{ hashFiles(inputs.manifest) }}
           restore-keys: |
+            flatpak-builder-${{ matrix.arch }}-${{ matrix.variant }}-
             flatpak-builder-${{ matrix.arch }}-
 
       - name: Build
         env:
-          MANIFEST: ${{ inputs.manifest }}
+          MANIFEST: ${{ steps.manifest.outputs.path }}
         run: |
           flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
             --ccache --force-clean --arch=${{ matrix.arch }} \
@@ -179,6 +235,20 @@ jobs:
             fi
           done <<<"$MODULES"
           exit $missing
+
+      - name: Check release version
+        if: matrix.variant == 'stable' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          APP_ID: ${{ steps.meta.outputs.app-id }}
+        run: |
+          version=$(python3 -c '
+          import sys, xml.etree.ElementTree as ET
+          print(ET.parse(sys.argv[1]).find("releases/release").get("version"))' \
+            "build-dir/files/share/metainfo/$APP_ID.metainfo.xml")
+          if [[ v$version != "$GITHUB_REF_NAME" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the newest metainfo release $version."
+            exit 1
+          fi
 
       - name: Bundle
         env:
@@ -205,42 +275,104 @@ jobs:
   release:
     name: Release bundles
     needs: build
-    if: inputs.release && github.event_name == 'push'
+    if: inputs.release && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
+      # Tag runs build only the stable variant.
       - uses: actions/download-artifact@v8
         with:
           path: bundles
           merge-multiple: true
 
-      - name: Attach bundles to the rolling release "latest"
+      - name: Attach bundles to the release of the tag
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
         run: |
           files=(bundles/*.flatpak)
-          if gh release view latest >/dev/null 2>&1; then
-            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest" \
-              -f sha="$GITHUB_SHA" -F force=true
-            gh release upload latest "${files[@]}" --clobber
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            # A tag with a suffix (v1.0.0-rc.1) becomes a pre-release,
+            # which phosh-apps does not publish.
+            pre=()
+            if [[ $TAG == *-* ]]; then pre=(--prerelease); fi
+            gh release create "$TAG" "${files[@]}" --verify-tag \
+              --title "$TAG" --generate-notes "${pre[@]}"
+          fi
+
+  nightly:
+    name: Publish nightly
+    needs: build
+    if: >-
+      inputs.nightly && github.event_name == 'push' &&
+      github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # Uploads never overlap; an older push that finishes later is skipped
+    # by the check below. No cancel-in-progress: a stale run arriving
+    # later would cancel the upload of the current one.
+    concurrency:
+      group: nightly-publish
+      cancel-in-progress: false
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: bundles
+          pattern: '*.Devel-*'
+          merge-multiple: true
+
+      - name: Attach bundles to the release "nightly"
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          head=$(gh api "repos/$GH_REPO/commits/$BRANCH" --jq .sha)
+          if [[ $head != "$GITHUB_SHA" ]]; then
+            echo "::notice::$BRANCH moved on to ${head::7}; its own run publishes it."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          notes="Nightly build of $BRANCH · ${GITHUB_SHA::7} ($GITHUB_SERVER_URL/$GH_REPO/commit/$GITHUB_SHA). Replaced by every push to $BRANCH."
+          files=(bundles/*.flatpak)
+          if gh release view nightly >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release upload nightly "${files[@]}" --clobber
             # Drop bundles this build no longer produces (e.g. after an
             # app id rename), so phosh-apps does not publish them.
             keep=$(printf '%s\n' "${files[@]##*/}")
-            gh release view latest --json assets -q '.assets[].name' |
+            gh release view nightly --json assets -q '.assets[].name' |
               grep -vxF "$keep" | while read -r old; do
-                gh release delete-asset latest "$old" --yes
+                gh release delete-asset nightly "$old" --yes
               done
+            gh release edit nightly --notes "$notes"
           else
-            gh release create latest "${files[@]}" --target "$GITHUB_SHA" \
-              --prerelease --title "Latest build" \
-              --notes "Rolling build of the latest push; replaced on every push."
+            gh release create nightly "${files[@]}" --target "$GITHUB_SHA" \
+              --prerelease --title "Nightly" --notes "$notes"
           fi
+          echo "published=true" >> "$GITHUB_OUTPUT"
 
-      - name: Notify the publish repository
-        if: inputs.publish-repo != ''
+  notify:
+    name: Notify the publish repository
+    needs: [release, nightly]
+    if: >-
+      always() && inputs.publish-repo != '' &&
+      (needs.release.result == 'success' || needs.nightly.outputs.published == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Send repository_dispatch "app-updated"
         env:
           GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
           PUBLISH_REPO: ${{ inputs.publish-repo }}

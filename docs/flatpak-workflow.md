@@ -1,10 +1,10 @@
 ---
 type: Playbook
 title: Flatpak build and install workflow
-description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, and install them on the phone.
+description: How to build Flatpak bundles locally and in CI for x86_64 and aarch64, publish the stable (tags) and nightly (main) channels, and install them on the phone.
 resource: ../.github/workflows/flatpak.yml
-tags: [flatpak, build, ci, install, aarch64]
-generated: { by: claude-code/2.1.310, at: 2026-10-24T22:30:00Z }
+tags: [flatpak, build, ci, install, aarch64, release, nightly]
+generated: { by: claude-code/2.1.310, at: 2026-10-25T16:00:00Z }
 sources:
   - id: flatpak-builder
     resource: https://docs.flatpak.org/en/latest/flatpak-builder.html
@@ -100,22 +100,59 @@ a timeout fails such a run fast instead of letting it run for 6 hours.
 Cross-building aarch64 locally under QEMU works
 but is slow; prefer CI.
 
-# Release for the shared repository
+# Release channels
 
-With `release: true`, a push additionally runs the job *Release
-bundles*: it downloads both artifacts and attaches them to the rolling
-GitHub Release `latest` (created on the first run, its tag moved to the
-pushed commit afterwards, assets replaced with `--clobber`). The caller
-must grant `permissions: { contents: write }` to the job. With
-`publish-repo` and the secret `PUBLISH_TOKEN` it then sends
-`repository_dispatch` `app-updated` to that repository; without the
-token it logs a notice and the publish repository's daily run picks the
-release up. See [shared app repository](app-repository.md).
+Two channels reach the phone through the
+[shared app repository](app-repository.md), side by side as two apps
+([decision](decisions/release-channels.md)):
+
+| Channel | App | Fed by | Input |
+|---|---|---|---|
+| Stable | `<app id>`, e.g. "Cirro" | a pushed tag `v<version>` | `release: true` |
+| Nightly | `<app id>.Devel`, e.g. "Cirro (Nightly)" | every push to the default branch | `nightly: true` |
+
+Pull requests build only the stable variant and keep their artifacts;
+nothing they build is published.
+
+**Stable.** A pushed tag `v<version>` builds the stable variant and
+checks that the newest `<release>` in the installed metainfo has that
+version (`v0.2.0` needs `<release version="0.2.0">`). The job *Release
+bundles* then attaches both bundles to the GitHub Release of the tag,
+creating it with generated notes if it does not exist. A tag with a
+suffix (`v1.0.0-rc.1`) becomes a pre-release, which phosh-apps does not
+publish. To release: bump the version, add the metainfo `<release>`,
+merge, then `git tag v0.2.0 && git push origin v0.2.0` on that commit.
+
+**Nightly.** A push to the default branch builds a second variant,
+*Build nightly (<arch>)*. The workflow derives its manifest from the
+stable one (`flatpak-builder --show-manifest`, written to
+`nightly-manifest.json` next to it): the app id gets the suffix `.Devel`
+and the app module (the last one) gets
+`-Dprofile=development -Dbuild_label=<branch> · <commit>`. The app's
+meson must therefore define both options and use them for its app id,
+desktop file, metainfo, icon and About dialog (GNOME convention; see
+Cirro's `meson_options.txt`). The job *Publish nightly* attaches
+`<app id>.Devel-<arch>.flatpak` and its source bundle to the
+pre-release `nightly`, moves its tag to the commit and deletes assets
+the build no longer produces. Publishing is serialized (concurrency
+group `nightly-publish`, no `cancel-in-progress`, so a stale run cannot
+cancel the current upload), and a run whose commit is no longer the
+branch head publishes nothing, so two quick pushes cannot end with the
+older build in the release.
+
+The caller must grant `permissions: { contents: write }` to the job.
+With `publish-repo` and the secret `PUBLISH_TOKEN`, *Notify the publish
+repository* sends `repository_dispatch` `app-updated` after either
+channel changed; without the token it logs a notice and the publish
+repository's daily run picks the release up. See
+[shared app repository](app-repository.md).
 
 # Install on the phone
 
 The normal way is GNOME Software through the
-[shared app repository](app-repository.md). For testing a single build:
+[shared app repository](app-repository.md), where the nightly app
+shows every merged change. For testing a pull request before it is
+merged:
 
 1. Download the `<bundle>-aarch64` artifact from the workflow run (GitHub
    delivers it as a zip) and unzip it.
