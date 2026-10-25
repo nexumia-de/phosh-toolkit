@@ -36,6 +36,15 @@
 #   also builds the app id <app id>.Devel with -Dprofile=development and
 #   -Dbuild_label="<branch> · <commit>" and attaches it to the
 #   pre-release "nightly".
+#
+# With a release.toml (docs/releases.md in phosh-toolkit):
+# - The x86_64 stable build takes the screenshots it lists from the built
+#   Flatpak (phone and desktop size, light and dark) and uploads them as
+#   the artifact "<bundle>-screenshots"; a tag release attaches them, and
+#   the metainfo's <screenshots> point there.
+# - The GitHub Release text is the metainfo <release> of the tag.
+# - The nightly build gets a development <release> with the pending
+#   changelog fragments, so the nightly app shows a version and its news.
 # The calling job must grant "contents: write" (a caller must grant what
 # the jobs below declare, even for jobs that are skipped).
 name: Flatpak
@@ -77,6 +86,16 @@ on:
         required: false
         type: string
         default: ''
+      release-config:
+        description: Release configuration (changelog, screenshots); the release features are skipped if the file does not exist.
+        required: false
+        type: string
+        default: release.toml
+      toolkit-ref:
+        description: Ref of phosh-toolkit whose scripts the jobs use; keep it equal to the ref in "uses:".
+        required: false
+        type: string
+        default: main
     secrets:
       PUBLISH_TOKEN:
         description: Token allowed to dispatch to publish-repo. Without it the publish repo's schedule picks the release up.
@@ -114,6 +133,26 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+
+      # Outside the workspace, which a manifest's "type: dir" source copies.
+      - uses: actions/checkout@v7
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+      - name: Move the toolkit out of the workspace
+        id: toolkit
+        env:
+          CONFIG: ${{ inputs.release-config }}
+        run: |
+          mv .phosh-toolkit "$RUNNER_TEMP/phosh-toolkit"
+          echo "release=$RUNNER_TEMP/phosh-toolkit/scripts/release.py" >> "$GITHUB_OUTPUT"
+          if [[ -f $CONFIG ]]; then
+            echo "root=$(dirname "$CONFIG")" >> "$GITHUB_OUTPUT"
+            shots=$(python3 -c 'import sys, tomllib
+          print(len(tomllib.load(open(sys.argv[1], "rb")).get("screenshots", {}).get("shot", [])))' "$CONFIG")
+            echo "shots=$shots" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install Flatpak tooling
         run: |
@@ -154,6 +193,13 @@ jobs:
               ["-Dprofile=development", "-Dbuild_label=" + sys.argv[1]])
           json.dump(m, sys.stdout, indent=2, ensure_ascii=False)' "$BRANCH · ${GITHUB_SHA::7}" > "$out"
           echo "path=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Add the development release to the nightly metainfo
+        if: matrix.variant == 'nightly' && steps.toolkit.outputs.root != ''
+        env:
+          RELEASE: ${{ steps.toolkit.outputs.release }}
+          ROOT: ${{ steps.toolkit.outputs.root }}
+        run: python3 "$RELEASE" --root "$ROOT" devel --suffix "$(date -u +%Y%m%d).${GITHUB_SHA::7}"
 
       - name: Read app id
         id: meta
@@ -263,6 +309,40 @@ jobs:
           flatpak build-bundle --arch=${{ matrix.arch }} --runtime \
             repo "$BUNDLE-sources-${{ matrix.arch }}.flatpak" "$APP_ID.Sources"
 
+      # Also the smoke test of the built app: it has to start in its
+      # runtime and show its window.
+      - name: Screenshots
+        if: matrix.variant == 'stable' && matrix.arch == 'x86_64' && steps.toolkit.outputs.shots > 0
+        env:
+          APP_ID: ${{ steps.meta.outputs.app-id }}
+          RELEASE: ${{ steps.toolkit.outputs.release }}
+          ROOT: ${{ steps.toolkit.outputs.root }}
+          TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          apt=(sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120)
+          "${apt[@]}" install -y -q --no-install-recommends libgtk-4-bin dbus-daemon libglib2.0-bin
+          scripts=$(dirname "$RELEASE")
+          npm install --prefix "$scripts" --no-audit --no-fund
+          (cd "$scripts" && npx playwright install --with-deps chromium)
+          export NODE_PATH=$scripts/node_modules
+          flatpak remote-add --user --no-gpg-verify ci-build repo
+          flatpak install --user -y --noninteractive ci-build "$APP_ID"
+          # A tag release must ship every screenshot its metainfo lists.
+          check=()
+          if [[ $TAG == true ]]; then
+            check=(--check-metainfo "build-dir/files/share/metainfo/$APP_ID.metainfo.xml")
+          fi
+          python3 "$RELEASE" --root "$ROOT" screenshots --out screenshots "${check[@]}" \
+            -- flatpak run "$APP_ID"
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.variant == 'stable' && matrix.arch == 'x86_64' && steps.toolkit.outputs.shots > 0
+        with:
+          name: ${{ steps.meta.outputs.bundle }}-screenshots
+          path: screenshots/*.png
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: error
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.meta.outputs.bundle }}-${{ matrix.arch }}
@@ -281,19 +361,28 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Tag runs build only the stable variant.
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+
+      # Tag runs build only the stable variant: its bundles and screenshots.
       - uses: actions/download-artifact@v8
         with:
           path: bundles
           merge-multiple: true
 
-      - name: Attach bundles to the release of the tag
+      - name: Attach bundles and screenshots to the release of the tag
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          CONFIG: ${{ inputs.release-config }}
         run: |
-          files=(bundles/*.flatpak)
+          shopt -s nullglob
+          files=(bundles/*.flatpak bundles/*.png)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${files[@]}" --clobber
           else
@@ -301,8 +390,17 @@ jobs:
             # which phosh-apps does not publish.
             pre=()
             if [[ $TAG == *-* ]]; then pre=(--prerelease); fi
+            # The notes are the metainfo <release>, as in GNOME Software;
+            # GitHub's generated notes for pre-releases and apps without
+            # release.toml.
+            notes=(--generate-notes)
+            if [[ -f $CONFIG && $TAG != *-* ]]; then
+              python3 .phosh-toolkit/scripts/release.py --root "$(dirname "$CONFIG")" \
+                notes "${TAG#v}" > "$RUNNER_TEMP/notes.md"
+              notes=(--notes-file "$RUNNER_TEMP/notes.md")
+            fi
             gh release create "$TAG" "${files[@]}" --verify-tag \
-              --title "$TAG" --generate-notes "${pre[@]}"
+              --title "$TAG" "${notes[@]}" "${pre[@]}"
           fi
 
   nightly:

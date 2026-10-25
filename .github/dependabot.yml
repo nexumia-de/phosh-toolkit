@@ -1,4 +1,5 @@
-# Weekly pull requests for new versions of the GitHub Actions used here.
+# Weekly pull requests for new versions of the GitHub Actions used here
+# and of the Node packages of scripts/ (Playwright for screenshot.sh).
 # Flatpak modules are updated by the update-check workflow instead (see
 # phosh-toolkit docs/dependency-updates.md).
 version: 2
@@ -10,3 +11,7 @@ updates:
     groups:
       actions:
         patterns: ['*']
+  - package-ecosystem: npm
+    directory: /scripts
+    schedule:
+      interval: weekly

@@ -1,0 +1,8 @@
+{
+  "name": "phosh-toolkit-scripts",
+  "private": true,
+  "description": "Node packages for scripts/screenshot.sh, pinned exactly; Dependabot proposes updates.",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
