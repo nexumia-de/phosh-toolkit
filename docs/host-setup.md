@@ -91,4 +91,4 @@ sudo env DEBIAN_FRONTEND=noninteractive apt-get \
 | 1–3, 5, 6 | full (`SKIP_FLATHUB=1`) | 28–57 s | normal mirror speed |
 | 4 | full | 19 min 39 s | mirror at 144 kB/s |
 | 7 | full | cancelled at 15 min 09 s | stalled on `libflite1` |
-| this change | ci | see the PR | |
+| 8 ([#3](https://github.com/suitably/phosh-toolkit/pull/3)) | ci | 12 s | 19 packages installed on the runner |
