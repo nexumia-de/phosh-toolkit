@@ -8,6 +8,9 @@ sources:
   - id: fedc
     resource: https://github.com/flathub-infra/flatpak-external-data-checker
     title: flatpak-external-data-checker README
+  - id: gh-hardening
+    resource: https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+    title: GitHub Docs, security hardening for GitHub Actions (pin actions to a full-length commit SHA)
   - id: dependabot
     resource: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
     title: Dependabot options reference
@@ -27,9 +30,23 @@ and an update is one reviewable change. Why:
 |---|---|---|
 | Flatpak module sources (tarballs, wheels, files) | flatpak-external-data-checker in the reusable [update-check workflow](../.github/workflows/update-check.yml), weekly | one pull request with new URLs and checksums |
 | `runtime-version` (GNOME runtime) | same workflow, job `runtime` | an issue "GNOME runtime N is available" |
-| GitHub Actions (`actions/checkout@v7`, …) | Dependabot, `.github/dependabot.yml` in every repository, weekly | one grouped pull request |
+| GitHub Actions, pinned to the commit of an exact release (`actions/checkout@3d3c42e… # v7.0.1`) | Dependabot, `.github/dependabot.yml` in every repository, weekly; it updates the SHA and the version comment together | one grouped pull request |
 | Playwright for screenshots (`scripts/package.json` in phosh-toolkit) | Dependabot (`npm`, directory `/scripts`), weekly | a pull request |
 | The toolkit's reusable workflows (`@main`) | not pinned; toolkit changes must stay backward compatible ([central toolkit](decisions/central-toolkit.md)) | – |
+| Check-only tools: the flatpak-external-data-checker image (`:latest`) and Flathub's linter (`org.flatpak.Builder`, branch `stable`) | not pinned, see below | – |
+
+A tag like `@v7` can be moved to other code by whoever controls the
+action; a commit SHA cannot, so a compromised or rewritten tag does not
+reach the CI (GitHub's hardening guide recommends full-length SHAs[^gh-hardening]).
+The version comment tells readers and Dependabot which release the SHA
+is; keep it when editing a `uses:` line.
+
+The two check-only tools float on purpose: they produce no shipped
+artifact, Flathub updates them for new runtime and metadata rules, and
+no bot can propose updates for a `docker://` digest or a Flathub app
+commit, so a pin would silently go stale. If a new linter rule fails CI,
+fix the finding or add a documented exception (see the
+[Flatpak workflow](flatpak-workflow.md#flathub-linter)).
 
 # x-checker-data per source type
 
@@ -99,3 +116,4 @@ flatpak run --filesystem="$PWD" org.flathub.flatpak-external-data-checker "$PWD/
 
 [^fedc]: flatpak-external-data-checker README
 [^dependabot]: Dependabot options reference
+[^gh-hardening]: GitHub Docs, security hardening for GitHub Actions

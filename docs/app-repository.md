@@ -1,8 +1,8 @@
 ---
 type: Playbook
 title: Shared app repository
-description: How all apps are published as one signed Flatpak repository on GitHub Pages (suitably/phosh-apps) so GNOME Software on the phone installs and updates them.
-resource: https://github.com/suitably/phosh-apps
+description: How all apps are published as one signed Flatpak repository on GitHub Pages (nexumia-de/phosh-apps) so GNOME Software on the phone installs and updates them.
+resource: https://github.com/nexumia-de/phosh-apps
 tags: [flatpak, distribution, repository, gnome-software, pages, ci]
 generated: { by: claude-code/2.1.310, at: 2026-10-25T16:00:00Z }
 sources:
@@ -24,7 +24,7 @@ GNOME Software. Why not Flathub: [decision](decisions/own-flatpak-repo.md).
 # Pieces
 
 ```
-app repo (tag v*, push to main)            suitably/phosh-apps
+app repo (tag v*, push to main)            nexumia-de/phosh-apps
   flatpak.yml (toolkit, release + nightly)   apps.txt
    ├─ build x86_64 + aarch64 bundles         publish.yml (dispatch / daily / manual)
    ├─ release v<version>, "nightly" ◄── gh release download ── scripts/build-site.sh
@@ -89,12 +89,12 @@ app repo (tag v*, push to main)            suitably/phosh-apps
      flatpak:
        permissions:
          contents: write
-       uses: suitably/phosh-toolkit/.github/workflows/flatpak.yml@main
+       uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
        with:
          manifest: de.nexumia.MyApp.yml
          release: true
          nightly: true
-         publish-repo: suitably/phosh-apps
+         publish-repo: nexumia-de/phosh-apps
        secrets:
          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
    ```
