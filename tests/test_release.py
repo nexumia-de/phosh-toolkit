@@ -195,3 +195,12 @@ def test_flathub_manifest_needs_a_full_commit(tmp_path):
         {"name": "app", "sources": [{"type": "dir", "path": "."}]}]}))
     assert release.main(["flathub-manifest", str(path), "--url", "u",
                          "--tag", "v1", "--commit", "abc1234"]) == 1
+
+
+def test_flathub_manifest_not_applicable_without_dir_source(tmp_path):
+    import json
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"modules": [
+        {"name": "app", "sources": [{"type": "file", "path": "app.py"}]}]}))
+    assert release.main(["flathub-manifest", str(path), "--url", "u", "--tag",
+                         "v1", "--commit", "0" * 40]) == 3

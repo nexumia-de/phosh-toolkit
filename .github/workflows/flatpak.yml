@@ -153,10 +153,16 @@ jobs:
           # built from a git tag; the tag name does not matter here.
           "${builder[@]}" org.flatpak.Builder --show-manifest "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
           mkdir -p "$RUNNER_TEMP/flathub"
+          status=0
           python3 .phosh-toolkit/scripts/release.py flathub-manifest "$RUNNER_TEMP/manifest.json" \
             --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" --tag v0.0.0 --commit "$GITHUB_SHA" \
-            > "$RUNNER_TEMP/flathub/$app_id.json"
-          "${lint[@]}" manifest "$RUNNER_TEMP/flathub/$app_id.json"
+            > "$RUNNER_TEMP/flathub/$app_id.json" || status=$?
+          case $status in
+            0) "${lint[@]}" manifest "$RUNNER_TEMP/flathub/$app_id.json" ;;
+            # The app module copies single files (like the demo app).
+            3) echo "::notice::No Flathub manifest: the app module has no type: dir source." ;;
+            *) exit "$status" ;;
+          esac
 
   build:
     # Stable keeps the plain name, which branch rulesets require.
@@ -366,9 +372,16 @@ jobs:
         run: |
           mkdir -p flathub
           flatpak-builder --show-manifest "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
+          status=0
           python3 "$RELEASE" flathub-manifest "$RUNNER_TEMP/manifest.json" \
             --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" --tag "$TAG" --commit "$GITHUB_SHA" \
-            > "flathub/$APP_ID.json"
+            > "flathub/$APP_ID.json" || status=$?
+          case $status in
+            0) ;;
+            3) rm "flathub/$APP_ID.json"
+               echo "::notice::No Flathub manifest: the app module has no type: dir source." ;;
+            *) exit "$status" ;;
+          esac
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: matrix.variant == 'stable' && matrix.arch == 'x86_64' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -376,7 +389,7 @@ jobs:
           name: ${{ steps.meta.outputs.bundle }}-flathub
           path: flathub/*.json
           retention-days: ${{ inputs.retention-days }}
-          if-no-files-found: error
+          if-no-files-found: ignore
 
       # Also the smoke test of the built app: it has to start in its
       # runtime and show its window.

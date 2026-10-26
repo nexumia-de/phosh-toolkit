@@ -35,7 +35,9 @@ Commands:
                                            take every screenshot of every shot
     release.py flathub-manifest MANIFEST_JSON --url URL --tag TAG --commit SHA
                                            the manifest for a Flathub submission
-                                           (needs no release.toml)
+                                           (needs no release.toml; exit code 3
+                                           if the app module has no
+                                           `type: dir` source)
 
 Standard library only (Python 3.11+), so CI runs it without installing
 anything.
@@ -75,6 +77,10 @@ SCREENSHOT_SH = Path(__file__).resolve().parent / "screenshot.sh"
 
 class ReleaseError(Exception):
     pass
+
+
+class NotApplicable(ReleaseError):
+    """Nothing to do for this app (exit code 3)."""
 
 
 class Config:
@@ -307,7 +313,8 @@ def flathub_manifest(manifest, url, tag, commit):
     sources = app.get("sources", [])
     local = [s for s in sources if isinstance(s, dict) and s.get("type") == "dir"]
     if not local:
-        raise ReleaseError("the last module has no `type: dir` source to replace")
+        raise NotApplicable("the app module builds from no `type: dir` source, "
+                            "so there is no Flathub manifest to derive")
     git = {"type": "git", "url": url, "tag": tag, "commit": commit,
            "x-checker-data": {"type": "git", "tag-pattern": r"^v([\d.]+)$"}}
     # The first local source becomes the git source, further ones go.
@@ -456,6 +463,9 @@ def main(argv=None):
     try:
         config = None if args.command_name in NO_CONFIG else Config(args.root)
         return args.func(config, args) or 0
+    except NotApplicable as error:
+        print(f"not applicable: {error}", file=sys.stderr)
+        return 3
     except (ReleaseError, subprocess.CalledProcessError) as error:
         if os.environ.get("GITHUB_ACTIONS") == "true":
             print("::error::" + str(error).replace("\n", "%0A"), file=sys.stderr)
