@@ -168,6 +168,20 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 - Details:
   [../phosh-toolkit/docs/decisions/code-reuse.md](docs/decisions/code-reuse.md).
 
+## Planning
+
+- Work items are GitHub issues in the app's repository, grouped by
+  milestones (`M<n> – <goal>`) and labels (`area: …`, `needs decision`,
+  `on device`). The app's `docs/roadmap.md` holds only the goals and
+  links the milestone pages; never add task checklists there.
+- Work on the issues of the lowest open milestone; do not start a later
+  milestone without asking. Issues without a milestone are the backlog.
+- A pull request that finishes an issue says `Closes #<n>` in its body.
+- Future work found on the way (follow-ups, missing measurements, bugs)
+  becomes a new issue with labels and milestone, not a line in a doc or
+  chat. Facts and decisions still go into `docs/`.
+- Details: [../phosh-toolkit/docs/planning.md](docs/planning.md).
+
 ## Knowledge
 
 - Each repository keeps its knowledge in its own OKF v0.2 bundle: **the
@@ -236,8 +250,8 @@ standing instruction for every repository that imports this file.
    branch into `main` (into `phosh` for forks) in **every repository the
    task changed**, unless one is already open for that branch. Title and
    body in English; the body says what changed, why, and how it was
-   verified, and links the related pull requests in the other
-   repositories.
+   verified, names the issues it closes (`Closes #<n>`), and links the
+   related pull requests in the other repositories.
 2. Watch the CI of every pull request you opened until it finishes. On a
    failure: find the root cause, fix it, validate locally, push, and
    watch again until CI is green. Never skip or disable a check to get

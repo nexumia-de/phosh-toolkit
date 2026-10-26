@@ -5,6 +5,7 @@
 * [Domain-based names](domain-names.md) - App ids are de.nexumia.* and the repository is served at flatpak.nexumia.de, independent of the code host.
 * [Release channels from main and tags](release-channels.md) - main feeds the nightly app <app id>.Devel, tags v<version> feed the stable app; no long-lived nightly branch.
 * [Release automation](release-automation.md) - Changelog fragments per pull request, a release pull request writes the metainfo <release>, merging tags; screenshots from the built Flatpak as release assets.
+* [Planning in GitHub issues](planning-issues.md) - Issues, milestones and labels instead of roadmap checklists; an organisation Project is an optional view.
 * [CI build environment](ci-build-environment.md) - Flatpak CI stays on plain Ubuntu runners instead of Flathub's build container.
 * [One repository per app](one-repo-per-app.md) - Every app lives in its own repository.
 * [Central toolkit](central-toolkit.md) - Shared setup, rules, scripts and CI live in phosh-toolkit.

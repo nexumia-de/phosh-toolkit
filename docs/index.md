@@ -23,6 +23,7 @@ links between concepts. Change history is in [log.md](log.md).
 # Workflows
 
 * [Host setup](host-setup.md) - What setup.sh installs (full and ci profiles), why cage replaced weston, and the apt hardening.
+* [Planning with issues and milestones](planning.md) - Issues are the work items, milestones the steps of the plan, labels classify; roadmap.md keeps the goals; an optional organisation Project shows all repositories.
 * [Releases, changelog and screenshots](releases.md) - Changelog fragments, release pull request, automatic tag, release notes from the metainfo and screenshots taken by CI from the built Flatpak.
 * [Flathub readiness](flathub.md) - What is prepared for a later Flathub submission, what still blocks it, and the submission steps.
 * [Flatpak build and install](flatpak-workflow.md) - Build Flatpak bundles locally and in CI, publish the stable (tags) and nightly (main) channels, and install them on the phone.
