@@ -42,7 +42,7 @@ for now. The nightly apps (`<app id>.Devel`) stay there in any case.
 
 | Blocker | Rule | What to do |
 |---|---|---|
-| Prebuilt Python wheels (Cirro: numpy, h5py) | "All source available submissions must be built entirely from source code", including runtime dependencies in the manifest[^requirements] | Build them from their source archives in the manifest (Cirro's [dependencies](../../cirro/docs/dependencies.md)). |
+| Prebuilt binaries in the manifest (compiled wheels, binary tarballs) | "All source available submissions must be built entirely from source code", including runtime dependencies in the manifest[^requirements] | Build from source archives. Cirro does since 2026-10-25: numpy, HDF5 and h5py from source, only pure-Python build tools as wheels, removed after the build ([its dependencies](../../cirro/docs/dependencies.md)). |
 | `https://nexumia.de` answers 404 | Linter `appid-url-not-reachable`: the domain from the app id must be reachable[^requirements] | Serve a page or a redirect there; then remove the exception in the workflow. |
 | No screenshots in the metainfo | Linter `metainfo-missing-screenshots` | Done by an app's first release pull request ([releases](releases.md)). |
 | Domain verification (for the "verified" badge) | Token at `https://nexumia.de/.well-known/org.flathub.VerifiedApps.txt`, one line per app; the token is shown on Flathub after the submission[^verification] | Serve it as a real file, not a redirect (whether redirects are followed is not documented): a Cloudflare Worker route for `nexumia.de/.well-known/*` or a small Pages site with `nexumia.de` as custom domain. |
