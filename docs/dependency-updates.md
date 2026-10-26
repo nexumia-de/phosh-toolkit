@@ -67,7 +67,8 @@ x-checker-data:
   version-query: .tag_name | sub("^v"; "")
   url-query: .assets[] | select(.name == "protobuf-c-" + $version + ".tar.gz") | .browser_download_url
 
-# Binary wheel from PyPI, one source per arch. The checker's own "pypi"
+# Binary wheel from PyPI, one source per arch. Flathub does not accept
+# compiled wheels (docs/flathub.md); prefer the sdist with type pypi. The checker's own "pypi"
 # type only handles noarch wheels, so query PyPI's JSON API instead.
 x-checker-data:
   type: json

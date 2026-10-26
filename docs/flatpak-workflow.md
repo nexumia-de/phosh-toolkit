@@ -111,6 +111,9 @@ is not accepted):
 |---|---|
 | `appid-url-not-reachable` | Flathub's ownership check that `https://<domain of the app id>` serves a page; our repository is not Flathub. |
 
+It lints the app manifest and the generated Flathub submission manifest
+([Flathub readiness](flathub.md)).
+
 Found when running it on Cirro and the demo app (2026-10-25, linter from
 Flathub `stable`): the manifests are clean. The `repo` check on a built
 repository adds two Flathub-only findings, which is why CI runs the

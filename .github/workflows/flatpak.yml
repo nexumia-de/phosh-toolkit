@@ -122,6 +122,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
 
       - name: Install the linter
         run: |
@@ -141,9 +146,23 @@ jobs:
           # appid-url-not-reachable: Flathub's check that the app id's
           # domain serves a page, part of its ownership verification.
           printf '{"%s": ["appid-url-not-reachable"]}\n' "$app_id" > "$RUNNER_TEMP/lint-exceptions.json"
-          "${builder[@]}" --command=flatpak-builder-lint org.flatpak.Builder \
-            --exceptions --user-exceptions "$RUNNER_TEMP/lint-exceptions.json" \
-            --gha-format manifest "$MANIFEST"
+          lint=("${builder[@]}" --command=flatpak-builder-lint org.flatpak.Builder
+                --exceptions --user-exceptions "$RUNNER_TEMP/lint-exceptions.json" --gha-format)
+          "${lint[@]}" manifest "$MANIFEST"
+          # The variant a Flathub submission would use (docs/flathub.md),
+          # built from a git tag; the tag name does not matter here.
+          "${builder[@]}" org.flatpak.Builder --show-manifest "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
+          mkdir -p "$RUNNER_TEMP/flathub"
+          status=0
+          python3 .phosh-toolkit/scripts/release.py flathub-manifest "$RUNNER_TEMP/manifest.json" \
+            --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" --tag v0.0.0 --commit "$GITHUB_SHA" \
+            > "$RUNNER_TEMP/flathub/$app_id.json" || status=$?
+          case $status in
+            0) "${lint[@]}" manifest "$RUNNER_TEMP/flathub/$app_id.json" ;;
+            # The app module copies single files (like the demo app).
+            3) echo "::notice::No Flathub manifest: the app module has no type: dir source." ;;
+            *) exit "$status" ;;
+          esac
 
   build:
     # Stable keeps the plain name, which branch rulesets require.
@@ -341,6 +360,37 @@ jobs:
           flatpak build-bundle --arch=${{ matrix.arch }} --runtime \
             repo "$BUNDLE-sources-${{ matrix.arch }}.flatpak" "$APP_ID.Sources"
 
+      # A tag release carries the manifest for a Flathub submission: the
+      # same build from this tag and commit (docs/flathub.md).
+      - name: Flathub manifest
+        if: matrix.variant == 'stable' && matrix.arch == 'x86_64' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          APP_ID: ${{ steps.meta.outputs.app-id }}
+          MANIFEST: ${{ steps.manifest.outputs.path }}
+          RELEASE: ${{ steps.toolkit.outputs.release }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p flathub
+          flatpak-builder --show-manifest "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
+          status=0
+          python3 "$RELEASE" flathub-manifest "$RUNNER_TEMP/manifest.json" \
+            --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" --tag "$TAG" --commit "$GITHUB_SHA" \
+            > "flathub/$APP_ID.json" || status=$?
+          case $status in
+            0) ;;
+            3) rm "flathub/$APP_ID.json"
+               echo "::notice::No Flathub manifest: the app module has no type: dir source." ;;
+            *) exit "$status" ;;
+          esac
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: matrix.variant == 'stable' && matrix.arch == 'x86_64' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: ${{ steps.meta.outputs.bundle }}-flathub
+          path: flathub/*.json
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: ignore
+
       # Also the smoke test of the built app: it has to start in its
       # runtime and show its window.
       - name: Screenshots
@@ -400,7 +450,8 @@ jobs:
           ref: ${{ inputs.toolkit-ref }}
           path: .phosh-toolkit
 
-      # Tag runs build only the stable variant: its bundles and screenshots.
+      # Tag runs build only the stable variant: its bundles, screenshots
+      # and Flathub manifest.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: bundles
@@ -414,7 +465,7 @@ jobs:
           CONFIG: ${{ inputs.release-config }}
         run: |
           shopt -s nullglob
-          files=(bundles/*.flatpak bundles/*.png)
+          files=(bundles/*.flatpak bundles/*.png bundles/*.json)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${files[@]}" --clobber
           else
