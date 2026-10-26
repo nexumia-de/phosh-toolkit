@@ -33,6 +33,11 @@ Commands:
                                            pending fragments (nightly builds)
     release.py screenshots --out DIR [--check-metainfo FILE] -- COMMAND...
                                            take every screenshot of every shot
+    release.py flathub-manifest MANIFEST_JSON --url URL --tag TAG --commit SHA
+                                           the manifest for a Flathub submission
+                                           (needs no release.toml; exit code 3
+                                           if the app module has no
+                                           `type: dir` source)
 
 Standard library only (Python 3.11+), so CI runs it without installing
 anything.
@@ -40,6 +45,7 @@ anything.
 import argparse
 import datetime
 import fnmatch
+import json
 import os
 import re
 import subprocess
@@ -71,6 +77,10 @@ SCREENSHOT_SH = Path(__file__).resolve().parent / "screenshot.sh"
 
 class ReleaseError(Exception):
     pass
+
+
+class NotApplicable(ReleaseError):
+    """Nothing to do for this app (exit code 3)."""
 
 
 class Config:
@@ -291,6 +301,29 @@ def check_listed(metainfo_text, out):
                            + "\n  ".join(missing))
 
 
+# Flathub
+
+def flathub_manifest(manifest, url, tag, commit):
+    """The manifest Flathub builds (docs/flathub.md): the app's own
+    module, the last one, built from the git tag instead of the local
+    checkout (its `type: dir` sources). x-checker-data lets Flathub's
+    update bot propose the next tag."""
+    manifest = json.loads(json.dumps(manifest))
+    app = manifest["modules"][-1]
+    sources = app.get("sources", [])
+    local = [s for s in sources if isinstance(s, dict) and s.get("type") == "dir"]
+    if not local:
+        raise NotApplicable("the app module builds from no `type: dir` source, "
+                            "so there is no Flathub manifest to derive")
+    git = {"type": "git", "url": url, "tag": tag, "commit": commit,
+           "x-checker-data": {"type": "git", "tag-pattern": r"^v([\d.]+)$"}}
+    # The first local source becomes the git source, further ones go.
+    app["sources"] = [git if s is local[0] else s for s in sources
+                      if not (isinstance(s, dict) and s.get("type") == "dir")
+                      or s is local[0]]
+    return manifest
+
+
 # Commands
 
 def cmd_check(config, args):
@@ -377,6 +410,19 @@ def cmd_screenshots(config, args):
     return 0
 
 
+def cmd_flathub_manifest(config, args):
+    with open(args.manifest, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if not re.fullmatch(r"[0-9a-f]{40}", args.commit):
+        raise ReleaseError(f"--commit must be a full SHA, not {args.commit!r}")
+    result = flathub_manifest(manifest, args.url, args.tag, args.commit)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+# Commands that work without a release.toml.
+NO_CONFIG = {"flathub-manifest"}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", default=".",
@@ -407,9 +453,19 @@ def main(argv=None):
     p.add_argument("--check-metainfo")
     p.add_argument("command", nargs="+")
     p.set_defaults(func=cmd_screenshots)
+    p = sub.add_parser("flathub-manifest")
+    p.add_argument("manifest", help="JSON from flatpak-builder --show-manifest")
+    p.add_argument("--url", required=True, help="git URL of the app repository")
+    p.add_argument("--tag", required=True)
+    p.add_argument("--commit", required=True)
+    p.set_defaults(func=cmd_flathub_manifest)
     args = parser.parse_args(argv)
     try:
-        return args.func(Config(args.root), args) or 0
+        config = None if args.command_name in NO_CONFIG else Config(args.root)
+        return args.func(config, args) or 0
+    except NotApplicable as error:
+        print(f"not applicable: {error}", file=sys.stderr)
+        return 3
     except (ReleaseError, subprocess.CalledProcessError) as error:
         if os.environ.get("GITHUB_ACTIONS") == "true":
             print("::error::" + str(error).replace("\n", "%0A"), file=sys.stderr)
