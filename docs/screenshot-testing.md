@@ -99,6 +99,37 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
   other PyGObject apps call the distribution interpreter explicitly, e.g.
   `/usr/bin/python3.12`.
 
+# Known limits: shared render nodes (GTK 4.20+)
+
+Found with Cirro on 2026-10-27, running the app from
+`org.gnome.Platform//51` (GTK 4.24):
+
+- **broadwayd aborts** with `Gdk:ERROR:…broadway-server.c:…:decode_nodes:
+  assertion failed: (node != NULL)`. The app then fails with "Unable to
+  read from broadway server" and the script with "App exited before its
+  window was shown". In Cirro this happened after the double-click that
+  maximizes the window, once the UI had more widgets (4 map pins, a
+  sidebar list). It failed in 6 of 6 runs at 1000×700, both with
+  Ubuntu's broadwayd (GTK 4.14) and with the runtime's own
+  `gtk4-broadwayd`. So it is not a version mismatch between the two.
+- **Repeated icons disappear.** In a list whose rows show the same
+  symbolic icon (`view-more-symbolic` menu buttons), only one row's
+  icon was drawn at 360×720. The widgets were mapped and allocated, so
+  only the picture is wrong.
+- **Likely cause.** The Broadway renderer
+  (`gsk/broadway/gskbroadwayrenderer.c`) gives every render node an id
+  and sends "reuse id" for a node it sent in the previous frame. GTK
+  4.20+ draws symbolic icons with `GtkSvg`, whose renderer caches
+  render nodes, so one node can appear in several places of a frame.
+  Broadway's server and its web client keep one object per id, so the
+  copies collide. This is not verified in the GTK sources; no GTK issue
+  was found for it (searched 2026-10-27).
+- **Workaround.** Start the window maximized in the app's demo mode
+  (Cirro: `self.maximize()` when `CIRRO_DEMO_DATA` is set). The script
+  then skips its double-click, and Cirro's 12 store shots passed 12 of
+  12. Avoid store shots of lists with repeated icons until GTK fixes
+  this. Real devices use Wayland and are not affected.
+
 # Requirements
 
 `gtk4-broadwayd` (Ubuntu package `libgtk-4-bin`, installed by `setup.sh`)

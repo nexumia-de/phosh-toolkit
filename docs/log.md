@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-10-27
+* **Update**: [Screenshot testing](screenshot-testing.md), new section "Known limits": with GTK 4.24 apps, `gtk4-broadwayd` can abort (`decode_nodes: node != NULL`) after the maximize double-click, and repeated symbolic icons can be missing from the picture. The likely cause is render nodes shared by GTK 4.20+'s SVG icon renderer. Workaround: the app's demo mode starts maximized. Found with Cirro (nexumia-de/cirro#46).
+
 ## 2026-10-25
 * **Creation**: [Planning with issues and milestones](planning.md) and the decision [planning in GitHub issues](decisions/planning-issues.md): work items are issues, milestones `M<n> – <goal>` group them, labels `area: …`, `needs decision`, `on device`, `no-changelog`; the app's roadmap keeps only goals. New `AGENTS.md` section "Planning"; pull request bodies name the issues they close. GitHub Projects need GraphQL, which cloud sessions cannot reach, so the owner sets up the optional organisation Project by hand (steps in the concept).
 * **Update**: [Flathub readiness](flathub.md): the prebuilt-wheel blocker is solved for Cirro (numpy, HDF5, h5py from source); the binary-wheel example in [dependency updates](dependency-updates.md) points to it.
