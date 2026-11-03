@@ -14,3 +14,4 @@
 * [Support platforms](support-platforms.md) - Liberapay now, Open Collective once hosted; one support link per app, no prompts in the main UI.
 * [OKF for documentation](okf-docs.md) - Knowledge is kept as an Open Knowledge Format bundle in docs/.
 * [AGENTS.md for vendor neutrality](agents-md.md) - Agent rules live in AGENTS.md; CLAUDE.md only imports it.
+* [One accent colour per app](app-accent-colours.md) - Each app has its own accent; light/dark follow the system unless chosen in the app's preferences.
