@@ -3,7 +3,7 @@ type: Guideline
 title: Visual design
 description: How Phosh apps look: stock libadwaita styling, typography, colour, icons, text and feedback patterns, following the GNOME HIG.
 tags: [ui, design, libadwaita, hig, guideline]
-generated: { by: claude-code/2.1.310, at: 2026-10-25T12:00:00Z }
+generated: { by: claude-code/2.1.317, at: 2026-11-03T23:45:00Z }
 sources:
   - id: hig-styling
     resource: https://developer.gnome.org/hig/guidelines/ui-styling.html
@@ -36,9 +36,11 @@ sources:
 
 # Goal
 
-Every app looks like a well-made GNOME core app: stock Adwaita, no own
-branding, no custom theme. Users get dark mode, high contrast and their
-accent colour for free, and the apps look consistent with each other.
+Every app looks like a well-made, modern GNOME app: libadwaita widgets,
+no own theme, clean and calm. Each app is recognisable by **its own
+accent colour**; light, dark and high contrast follow the system unless
+the user picks a style in the app. The apps look consistent with each
+other because everything except the accent stays libadwaita's.
 Layout and responsiveness are covered by
 [adaptive libadwaita UI](adaptive-libadwaita.md); this page covers looks.
 
@@ -66,8 +68,25 @@ Layout and responsiveness are covered by
    `var(--accent-bg-color)`, `var(--window-bg-color)`, `var(--border-color)`
    etc.[^adw-vars] Never hard-code hex values or "blue" for UI chrome, and
    never use the GTK 3 named colours (`@theme_bg_color`, …), which do not
-   pick up overrides.[^adw-vars] Do not override the accent colour: apps
-   follow the system accent.[^adw-styles]
+   pick up overrides.[^adw-vars]
+   **Accent: one per app.** Each app sets its own accent in its
+   `style.css` and nothing else of the palette
+   ([decision](decisions/app-accent-colours.md)):
+
+   ```css
+   :root {
+     --accent-bg-color: #00a4dc;          /* the app's colour */
+     --accent-fg-color: rgb(0 0 0 / 87%); /* text on it, ≥ 4.5:1 */
+   }
+   ```
+
+   libadwaita derives `--accent-color` (accent text on the window
+   background) from it for light and dark.[^adw-styles] Pick the
+   foreground that reaches 4.5:1 on the accent (white on dark accents,
+   near-black on light ones) and check the accent text in both styles.
+   Record the colour and why in the app's `docs/design.md`. Window,
+   view, header bar and card colours stay libadwaita's; the system
+   accent is not used.
    **Exception: data colours.** Colours that encode data (radar scale,
    temperature map) are part of the content and may be fixed. They must
    stay legible on light and dark backgrounds, and colour must never be the
@@ -104,9 +123,12 @@ Layout and responsiveness are covered by
    subtitles, check boxes and entries.[^hig-writing] Use proper Unicode:
    `…` for ellipses, `–` for ranges, `×` for dimensions, `°C`, typographic
    quotes. Write units with a space ("12 mm/h").
-8. **Dark and high contrast.** Follow the system style; offer a per-app
-   style switch only if the app is used for long periods.[^hig-styling]
-   Any custom drawing (maps, charts) reads colours from the style
+8. **Dark and high contrast.** Follow the system style by default
+   (`AdwColorScheme.DEFAULT`). Every app offers a style choice in its
+   preferences, an `AdwComboRow` "Style" with "Follow System", "Light"
+   and "Dark" (`DEFAULT`, `FORCE_LIGHT`, `FORCE_DARK`), stored with the
+   app's settings and applied at start-up.[^hig-styling] High contrast
+   always follows the system. Any custom drawing (maps, charts) reads colours from the style
    (`AdwStyleManager:dark`, `prefers-color-scheme: dark`,
    `prefers-contrast: more`) instead of assuming a light
    background.[^adw-styles]
@@ -139,11 +161,14 @@ these features; judge them in a Flatpak build.
 Use this when reviewing a UI change, together with the 360×720 screenshot:
 
 - [ ] No new CSS that a style class or widget already covers.
-- [ ] No hard-coded colours or font sizes in UI chrome.
+- [ ] No hard-coded colours or font sizes in UI chrome; the accent only
+      in the app's `:root` block.
 - [ ] Exactly one `suggested-action` per view at most.
 - [ ] Every icon-only button has a tooltip and an accessible label.
 - [ ] Empty/error/offline states use `AdwStatusPage`, `AdwToast` or `AdwBanner`.
 - [ ] Capitalisation and Unicode as in rule 7.
+- [ ] The style choice in the preferences switches light and dark at
+      once and survives a restart.
 - [ ] Looks right in dark style (`ADW_DEBUG_COLOR_SCHEME=prefer-dark`) and
       high contrast (`ADW_DEBUG_HIGH_CONTRAST=1`).[^adw-debug]
 

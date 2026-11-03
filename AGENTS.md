@@ -46,8 +46,14 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 
 ## Design
 
-- Stock libadwaita look, following the GNOME HIG: no own theme, no
-  branding, no overridden accent colour.
+- libadwaita look, following the GNOME HIG: no own theme, no logos in
+  the UI. Each app has **its own accent colour**, set only through
+  `--accent-bg-color`/`--accent-fg-color` in its `style.css` and
+  recorded in the app's `docs/design.md`
+  ([decision](docs/decisions/app-accent-colours.md)).
+- Light and dark **follow the system by default**; every app offers
+  "Follow System", "Light" and "Dark" in its preferences and keeps the
+  choice.
 - Style classes before CSS (`suggested-action`, `boxed-list`, `card`,
   `title-1`…`4`, `heading`, `caption`, `dimmed`, `numeric`, `osd`). If CSS is
   unavoidable: colours only via `var(--…)` variables, one `style.css`

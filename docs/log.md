@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-03
+* **Update**: [Visual design](design.md) and `AGENTS.md`: each app has its own accent colour (only `--accent-bg-color`/`--accent-fg-color` in its `style.css`, foreground with 4.5:1, recorded in the app's `docs/design.md`), and every app offers Follow System / Light / Dark in its preferences; new decision [one accent colour per app](decisions/app-accent-colours.md), at the owner's request for a cleaner, more recognisable look across all apps.
+
 ## 2026-10-27
 * **Update**: [Screenshot testing](screenshot-testing.md), new section "Known limits": with GTK 4.24 apps, `gtk4-broadwayd` can abort (`decode_nodes: node != NULL`) after the maximize double-click, and repeated symbolic icons can be missing from the picture. The likely cause is render nodes shared by GTK 4.20+'s SVG icon renderer. Workaround: the app's demo mode starts maximized. Found with Cirro (nexumia-de/cirro#46).
 
