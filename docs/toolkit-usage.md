@@ -131,7 +131,7 @@ modules:
   - name: phosh-toolkit
     buildsystem: simple
     build-commands:
-      - install -Dm644 -t "$(python3 -c 'import sysconfig; print(sysconfig.get_path("purelib", vars={"base": "/app"}))')/phosh_toolkit" lib/phosh_toolkit/*.py
+      - install -Dm644 -t "$(python3 -c 'import sysconfig; print(sysconfig.get_path("purelib", vars={"base":"/app"}))')/phosh_toolkit" lib/phosh_toolkit/*.py
       - install -Dm644 -t /app/share/licenses/$FLATPAK_ID/phosh-toolkit LICENSE
     sources:
       - type: git

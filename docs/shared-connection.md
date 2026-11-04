@@ -36,6 +36,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
 | `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s) |
 | `router` | no | `Router`: base class of an app's connection (state, `base_url`, `resolve()`, `call()`); `probe_addresses()` for setup |
+| `settings` | no | `app_dir(kind, app)` for the XDG directories, `JsonStore(path, cls, version)` for the account file |
 | `keyring` | no | `Keyring(schema, labels, memory_env)`: libsecret, memory fallback |
 | `certificate` | no | `CertificateFile(path, keyring)`: private copy (mode 600), password in the keyring |
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
