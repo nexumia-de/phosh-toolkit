@@ -18,6 +18,9 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 - Everything in this repository and in all app repositories is English:
   code, comments, docs, commit messages, PR texts, issue texts.
 - The user may write in German or English. Always reply in English.
+- Commands for the owner to run (on the phone or elsewhere): one command
+  per code block, without comments inside the block, so each can be
+  copied on its own; explanations go in the text around the blocks.
 
 ## Target platform
 
