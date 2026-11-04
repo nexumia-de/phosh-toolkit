@@ -163,7 +163,9 @@ actions = ["app.step-time(12)"]    # activated after the window appeared
   light shots of every entry (the first is `type="default"`); the dark
   ones are only release assets, because a store that ignores the
   `environment` attribute would show each screenshot
-  twice.[^appstream-screenshots]
+  twice.[^appstream-screenshots] These URLs do not exist yet when the
+  tag run builds; the build composes the AppStream data without network
+  so they are kept ([Flatpak workflow](flatpak-workflow.md)).
 - **Pull requests**: the x86_64 build uploads the artifact
   `<bundle>-screenshots`, so UI changes can be reviewed without
   installing anything.
