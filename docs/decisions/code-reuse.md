@@ -8,7 +8,9 @@ generated: { by: claude-code/2.1.310, at: 2026-10-25T12:00:00Z }
 
 # Status
 
-Accepted (2026-10-25).
+Accepted (2026-10-25). The package was created on 2026-11-04 when Nauta,
+the second server client, needed Ephyra's connection and playback code
+([shared connection and playback](../shared-connection.md)).
 
 # Context
 
@@ -27,8 +29,7 @@ runtime code is not yet.
    both apps use it from there. Code written for one app only is not
    generalised in advance.
 2. **Shared runtime code lives in phosh-toolkit as one Python package**
-   (planned path `lib/phosh_toolkit/`, created with the first shared
-   module). It is small, has no dependencies beyond PyGObject, GTK 4 and
+   (`lib/phosh_toolkit/`). It is small, has no dependencies beyond PyGObject, GTK 4 and
    libadwaita, and contains no app-specific names or URLs.
 3. **Apps consume it as a Flatpak module pinned to a toolkit tag**
    (`type: git`, `tag:` plus `commit:`), never `main`, so a toolkit change

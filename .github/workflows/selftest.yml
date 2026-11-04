@@ -1,5 +1,6 @@
 # Exercises the toolkit itself: validators, the release and screenshot
-# scripts and the reusable Flatpak workflow with the demo app in examples/.
+# scripts, the shared Python package in lib/ and the reusable Flatpak
+# workflow with the demo app in examples/.
 name: Self-test
 
 on:
@@ -33,7 +34,7 @@ jobs:
         run: |
           sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 \
             install -y -q --no-install-recommends python3-pytest
-          python3 -m pytest -v tests
+          python3 -m pytest -v tests --ignore=tests/lib
           python3 scripts/release.py --root examples check
       - name: Screenshot demo at 360x720
         run: |
@@ -46,6 +47,25 @@ jobs:
         with:
           name: demo-screenshot
           path: demo-360x720*.png
+
+  lib:
+    # The shared package (docs/shared-connection.md) with real widgets
+    # (xvfb), GStreamer and mutual TLS against certificates made by openssl.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install dependencies
+        run: |
+          apt=(sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120)
+          "${apt[@]}" update -q
+          "${apt[@]}" install -y -q --no-install-recommends \
+            python3-pytest python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 \
+            gir1.2-soup-3.0 gir1.2-secret-1 glib-networking \
+            gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good openssl xvfb xauth dbus
+      - name: Run tests
+        run: dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -v tests/lib
 
   flatpak:
     # The reusable workflow's release job declares contents: write; a

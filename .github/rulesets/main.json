@@ -43,6 +43,10 @@
             "integration_id": 15368
           },
           {
+            "context": "lib",
+            "integration_id": 15368
+          },
+          {
             "context": "flatpak / REUSE compliance",
             "integration_id": 15368
           },

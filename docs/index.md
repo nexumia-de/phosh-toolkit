@@ -33,6 +33,10 @@ links between concepts. Change history is in [log.md](log.md).
 * [Branch protection](branch-protection.md) - Ruleset files that keep main behind pull requests with green CI, and how to import them.
 * [Toolkit usage](toolkit-usage.md) - How an app repository consumes this toolkit.
 
+# Shared code
+
+* [Shared connection and playback](shared-connection.md) - The `phosh_toolkit` Python package: HTTP with client certificates, home/local and remote route with server id check, keyring, connection form, media proxy and playbin player, image cache.
+
 # Decision records
 
 * [Decisions](decisions/index.md) - Why the toolkit and the app repositories are set up the way they are.

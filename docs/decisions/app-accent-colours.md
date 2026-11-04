@@ -35,9 +35,8 @@ rarely change per app.
 - Apps are recognisable at a glance and still consistent with each
   other and with Phosh.
 - The user's system accent colour is ignored inside these apps.
-- The style row is a few lines per app. Following the code-reuse rule it
-  stays in the first apps and moves into the toolkit once two apps carry
-  it (Ephyra first, Cirro next).
+- The style row moved into the toolkit (`phosh_toolkit.style`) when
+  Nauta became its second app after Ephyra (2026-11-04).
 - libadwaita 1.5 hosts (Ubuntu 24.04) don't parse the CSS variables;
   apps may repeat the accent as `@define-color accent_bg_color` for host
   screenshots.

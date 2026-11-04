@@ -118,6 +118,44 @@ required check `release / Changelog` in the app's ruleset. See
 - `REUSE.toml` and `LICENSES/`, `docs/dependencies.md`, and licence
   installs for every manifest module: [licensing](licensing.md).
 
+# 3c. Shared Python package
+
+Runtime code that two apps need lives in `lib/phosh_toolkit/`
+([code reuse](decisions/code-reuse.md)); what it contains is in
+[shared connection and playback](shared-connection.md). An app pulls it
+into its Flatpak as a module **before** the app module, pinned to a
+toolkit tag and its commit:
+
+```yaml
+modules:
+  - name: phosh-toolkit
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 -t "$(python3 -c 'import sysconfig; print(sysconfig.get_path("purelib", vars={"base":"/app"}))')/phosh_toolkit" lib/phosh_toolkit/*.py
+      - install -Dm644 -t /app/share/licenses/$FLATPAK_ID/phosh-toolkit LICENSE
+    sources:
+      - type: git
+        url: https://github.com/nexumia-de/phosh-toolkit.git
+        tag: v0.1.0
+        commit: <commit of the tag>
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+  - name: my-app
+    ...
+```
+
+The files land in the runtime Python's `site-packages` under `/app`,
+which is also where meson installs the app's own package, so the app's
+launcher finds both. List the module as `` `phosh-toolkit` `` in the
+app's `docs/dependencies.md` (GPL-3.0-or-later, compatible with the
+apps' AGPL-3.0-or-later).
+
+From the source tree and in the app's test job the package comes from
+the sibling checkout: `PYTHONPATH=../phosh-toolkit/lib`. The app's
+`tests.yml` checks out phosh-toolkit at the commit the manifest pins,
+so tests and Flatpak use the same code.
+
 # 4. Screenshots
 
 From the app repository:
