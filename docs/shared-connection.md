@@ -31,7 +31,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 
 | Module | GTK | What |
 |---|---|---|
-| `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`; errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
+| `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`, `open()` streams an answer (also for a `POST` body); errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
 | `tls` | no | `load(data, password)` for PKCS #12 or PEM with key, `describe(cert)` |
 | `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
 | `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s) |
@@ -68,6 +68,12 @@ the credentials. The route is chosen again when `Gio.NetworkMonitor`
 reports a change, and once after a call that failed with a network
 error (`Router.call` retries through the new route). A `401` calls the
 app's `unauthorized()`.
+
+**Strict mode** (`Router.strict_local = True`, `route.candidates(…,
+strict=True)`) is for servers that can't say who they are before the
+credentials are sent (Subsonic has no public server id): the local
+address is then tried only on a listed home Wi-Fi that NetworkManager
+reports, never "everywhere" as a fallback.
 
 An app subclasses `Router` and implements `probe`, `addresses` and
 `server_id`; `resolved(kind, url, info)` lets it take the server name
@@ -121,8 +127,9 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
   (other local programs can't use it);
 - the app's `forward(path)` returns the client, the upstream URL on the
   current route and the headers, so each app adds its own credentials
-  (Jellyfin: `Authorization` header; Subsonic: query parameters on the
-  upstream URL only);
+  (Jellyfin: `Authorization` header). A fourth item, a form body, sends
+  the request up as `POST` with the credentials in the body (Subsonic's
+  OpenSubsonic `formPost`), so they appear in no URL and no proxy log;
 - `Range` and `If-Range` pass through (seeking), `Accept-Encoding:
   identity` keeps lengths right; without a length the answer ends by
   closing.
@@ -147,7 +154,8 @@ phone, 2026-11-04). `video=False` plays sound only.
 with certificates made by `openssl` (refused without, works with PKCS #12
 and PEM), the nginx page, the route at home, away, with the local
 server down and with a different server, retry after a network error,
-401, the proxy with ranges through mutual TLS, a WAV played, paused,
+401, strict mode, the proxy with ranges through mutual TLS and with a
+`POST` form body, a WAV played, paused,
 seeked and ended through the proxy, the image cache, and the connection
 form with real widgets under `xvfb-run`.
 
