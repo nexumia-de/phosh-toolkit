@@ -28,12 +28,19 @@ class FakeServer:
     (Pangolin, Authelia, …): without the cookie "proxy-session=ok" a
     browser (Accept: text/html) is redirected to /auth/login, anything else
     gets 401 "Unauthorized". The login page submits itself (as if the user
-    signed in); the answer sets the cookie and redirects back."""
+    signed in); the answer sets the cookie and redirects back.
+
+    With basic="user:password" it behaves like Pangolin's header
+    authentication with extended compatibility: a request without that
+    HTTP Basic Authorization header gets 401 with WWW-Authenticate; the
+    header is passed on to the server unchanged, as Pangolin's Badger
+    does."""
 
     def __init__(self, server_id="server-a", context=None):
         self.server_id = server_id
         self.requests = []
         self.login = False
+        self.basic = None
         self.bodies = []      # of POST requests
         owner = self
 
@@ -89,6 +96,14 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _proxy_login(self, path):
         """True if the proxy answered instead of the server."""
+        basic = self.server_owner.basic
+        if basic:
+            import base64
+            expected = "Basic " + base64.b64encode(basic.encode()).decode()
+            if self.headers.get("Authorization") != expected:
+                self._send(401, b"Unauthorized", "text/plain",
+                           [("WWW-Authenticate", 'Basic realm="pangolin"')])
+                return True
         if not self.server_owner.login or \
                 "proxy-session=ok" in (self.headers.get("Cookie") or ""):
             return False

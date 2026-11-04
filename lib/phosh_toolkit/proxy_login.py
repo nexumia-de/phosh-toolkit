@@ -6,19 +6,25 @@ their own login before they pass anything to the server; browsers keep the
 proxy's session in a cookie. The app shows the proxy's login page in a web
 view (WebKitGTK 6, with the client certificate for mutual TLS), takes the
 cookies the proxy set once the server answers through it, keeps them in
-the keyring and sends them with every request (http.Client.cookies)."""
+the keyring and sends them with every request (http.Client.cookies).
+
+Proxies that take HTTP Basic auth instead (Pangolin's header
+authentication) need no web view: ProxyCredentials keeps user name and
+password per origin in the keyring for http.Client.proxy_auth."""
 import json
 import logging
 
 import gi
 
 from phosh_toolkit import tasks
-from phosh_toolkit.http import Client, HttpError, origin
+from phosh_toolkit.http import Client, HttpError, basic_auth, origin
 
 log = logging.getLogger("phosh_toolkit.proxy_login")
 
 # Keyring kind of the stored cookies: {origin: "name=value; …"}.
 COOKIES = "proxy-cookies"
+# Keyring kind of HTTP Basic credentials: {origin: {"user", "password"}}.
+CREDENTIALS = "proxy-credentials"
 
 
 class CookieJar:
@@ -38,6 +44,45 @@ class CookieJar:
             self.keyring.store(COOKIES, json.dumps(cookies))
         else:
             self.keyring.clear(COOKIES)
+
+
+class ProxyCredentials:
+    """User name and password of a proxy's HTTP Basic auth per origin, in
+    the app's keyring (one secret holding all origins)."""
+
+    def __init__(self, keyring):
+        self.keyring = keyring
+
+    def load(self):
+        try:
+            data = json.loads(self.keyring.lookup(CREDENTIALS) or "{}")
+        except ValueError:
+            return {}
+        return {k: v for k, v in data.items()
+                if isinstance(v, dict) and v.get("user")}
+
+    def get(self, url):
+        """(user, password) for the origin of `url`, or ("", "")."""
+        entry = self.load().get(origin(url)) if url else None
+        return (entry["user"], entry.get("password", "")) if entry else ("", "")
+
+    def set(self, url, user, password):
+        """Keep (or with an empty user forget) the credentials of `url`'s
+        origin."""
+        data = self.load()
+        if user:
+            data[origin(url)] = {"user": user, "password": password}
+        else:
+            data.pop(origin(url), None)
+        if data:
+            self.keyring.store(CREDENTIALS, json.dumps(data))
+        else:
+            self.keyring.clear(CREDENTIALS)
+
+    def headers(self):
+        """{origin: "Basic …"} for http.Client.proxy_auth."""
+        return {k: basic_auth(v["user"], v.get("password", ""))
+                for k, v in self.load().items()}
 
 
 def cookie_header(cookies):
@@ -110,6 +155,7 @@ def make_page(server_url, login_url, http, probe, done, trusted=()):
         trial.certificate = http.certificate
         trial.tls_database = http.tls_database
         trial.cookies = dict(http.cookies, **{key: cookies})
+        trial.proxy_auth = dict(http.proxy_auth)
 
         def check():
             # Does the server answer through the proxy with these cookies?
@@ -140,13 +186,23 @@ def make_page(server_url, login_url, http, probe, done, trusted=()):
     return page
 
 
-def sign_in(nav, router, http, jar, probe, url="", trusted=(), done=None):
+def sign_in(nav, router, http, jar, probe, url="", trusted=(), done=None,
+            on_basic=None):
     """Push the login page onto `nav` (an Adw.NavigationView) for the
     router's current or first address; on success store the cookies in
     `jar`, resolve the route again and call done(). `probe(http, url,
     timeout)` as in make_page(). Does nothing while the
     page is already shown or WebKitGTK is missing (then the error stays
-    visible)."""
+    visible).
+
+    A proxy that asks for HTTP Basic auth (router.proxy_error.wants_basic)
+    gets no web page: on_basic() is called instead, so the app can point
+    to the proxy login fields of its connection form."""
+    error = getattr(router, "proxy_error", None)
+    if error is not None and error.wants_basic:
+        if on_basic:
+            on_basic()
+        return None
     visible = nav.get_visible_page()
     if visible is not None and visible.get_tag() == "proxy-login":
         return None

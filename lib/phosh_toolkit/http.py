@@ -2,6 +2,7 @@
 certificate. Every thread gets its own SoupSession, so connections are
 reused within a thread and no session is shared between threads.
 No GTK."""
+import base64
 import threading
 from urllib.parse import urlsplit
 
@@ -21,11 +22,19 @@ PROXY_LOGIN = "proxy-login"
 
 
 class HttpError(Exception):
-    def __init__(self, kind, message, status=0, url=""):
+    """`challenge` is the WWW-Authenticate header of a 401, e.g.
+    'Basic realm="pangolin"': a proxy that wants HTTP Basic auth."""
+
+    def __init__(self, kind, message, status=0, url="", challenge=""):
         super().__init__(message)
         self.kind = kind
         self.status = status
         self.url = url
+        self.challenge = challenge
+
+    @property
+    def wants_basic(self):
+        return self.challenge.lower().startswith("basic")
 
 
 def origin(url):
@@ -35,9 +44,19 @@ def origin(url):
     return f"{parts.scheme}://{(parts.hostname or '').lower()}:{port}"
 
 
-def proxy_login(url):
+def proxy_login(url, challenge=""):
+    if challenge.lower().startswith("basic"):
+        return HttpError(PROXY_LOGIN, "The proxy in front of the server asks "
+                         "for its user name and password", url=url,
+                         challenge=challenge)
     return HttpError(PROXY_LOGIN, "The proxy in front of the server asks for "
-                     "its own login", url=url)
+                     "its own login", url=url, challenge=challenge)
+
+
+def basic_auth(user, password):
+    """The Authorization header value of HTTP Basic auth."""
+    pair = f"{user}:{password}".encode("utf-8")
+    return "Basic " + base64.b64encode(pair).decode("ascii")
 
 
 def classify(error):
@@ -88,6 +107,11 @@ class Client:
         # Cookie header per origin (see origin()): the session of a
         # reverse proxy's own login (proxy_login.py). Replaced as a whole.
         self.cookies = {}
+        # Authorization header per origin: HTTP Basic auth that a reverse
+        # proxy asks for (Pangolin's header authentication,
+        # proxy_login.ProxyCredentials). An Authorization header the app
+        # sets itself wins. Replaced as a whole.
+        self.proxy_auth = {}
 
     def _session(self):
         session = getattr(self._local, "session", None)
@@ -116,9 +140,13 @@ class Client:
         # connection form turns into "choose your client certificate".
         if self.certificate is not None:
             msg.set_tls_client_certificate(self.certificate)
-        cookie = self.cookies.get(origin(url))
+        key = origin(url)
+        cookie = self.cookies.get(key)
         if cookie:
             msg.props.request_headers.replace("Cookie", cookie)
+        auth = self.proxy_auth.get(key)
+        if auth and not _header(headers or {}, "Authorization"):
+            msg.props.request_headers.replace("Authorization", auth)
         return msg
 
     def request(self, method, url, headers=None, body=None,
@@ -147,7 +175,8 @@ class Client:
             raise HttpError(CERTIFICATE_REQUIRED,
                             "The server asks for a client certificate", status)
         if status == 401:
-            raise HttpError(AUTH, "Signed out by the server", status)
+            raise HttpError(AUTH, "Signed out by the server", status,
+                            challenge=_header(response.headers, "WWW-Authenticate"))
         if status >= 400:
             raise HttpError(SERVER, f"Server error {status}", status)
         return response

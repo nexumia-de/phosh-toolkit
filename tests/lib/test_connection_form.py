@@ -129,3 +129,65 @@ def test_proxy_login_from_the_form(form, pki):
         assert form.cookies.load() == {origin(server.url): "proxy-session=ok"}
     finally:
         server.stop()
+
+
+def test_proxy_basic_fields(tmp_path, monkeypatch, trust):
+    """With proxy_basic the form asks for the proxy's user name and
+    password when the proxy challenges, and keeps them in the keyring."""
+    from conftest import FakeServer
+    from phosh_toolkit import proxy_login
+    from phosh_toolkit.http import origin
+    Adw.init()
+    monkeypatch.setattr(connection_form.network, "current_ssids", lambda: None)
+    server = FakeServer()
+    server.basic = "phone:s3cret"
+    server.start()
+    keyring = Keyring("de.nexumia.Test", {}, memory_env="PHOSH_TOOLKIT_TEST_KEYRING")
+    toasts = []
+    window = SimpleNamespace(toast=toasts.append)
+    account = SimpleNamespace(remote_url="", local_url="", home_networks=[],
+                              certificate=False)
+
+    def probe(http):
+        def ask(url, timeout):
+            answer = json.loads(http.request("GET", url + "/info",
+                                             {"Accept": "application/json"},
+                                             timeout=timeout).body)
+            return answer["id"], answer
+        return ask
+
+    try:
+        form = connection_form.ConnectionForm(
+            window, account, CertificateFile(tmp_path / "cert", keyring), probe,
+            "Test/1.0", server_description="Where", home_description="Home",
+            proxy_basic=True)
+        assert not form.proxy.get_expanded()
+        form.remote.set_text(server.url)
+        answers, http = check(form)
+        assert answers is None and "Proxy Login" in toasts[-1]
+        assert form.proxy.get_expanded() and form.proxy_user.has_css_class("error")
+        form.proxy_user.set_text("phone")
+        form.proxy_password.set_text("s3cret")
+        answers, http = check(form)
+        assert answers is not None
+        assert http.proxy_auth == {origin(server.url): proxy_login.basic_auth("phone", "s3cret")}
+        form.apply(account)
+        creds = proxy_login.ProxyCredentials(keyring)
+        assert creds.get(server.url) == ("phone", "s3cret")
+        # Shown again in a new form; emptied, it is forgotten.
+        again = connection_form.ConnectionForm(
+            window, account, CertificateFile(tmp_path / "cert", keyring), probe,
+            "Test/1.0", server_description="Where", home_description="Home",
+            proxy_basic=True)
+        assert again.proxy_user.get_text() == "phone" and again.proxy.get_expanded()
+        again.proxy_user.set_text("")
+        again.apply(account)
+        assert creds.load() == {}
+        # Without proxy_basic there are no such rows.
+        plain = connection_form.ConnectionForm(
+            window, account, CertificateFile(tmp_path / "cert", keyring), probe,
+            "Test/1.0", server_description="Where", home_description="Home")
+        assert plain.proxy is None and plain.proxy_credentials() == ("", "")
+    finally:
+        server.stop()
+        keyring.forget_memory()

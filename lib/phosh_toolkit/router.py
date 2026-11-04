@@ -48,6 +48,9 @@ class Router(GObject.Object):
 
     def __init__(self, watch=True):
         super().__init__()
+        # The last proxy-login HttpError: its `wants_basic` tells whether
+        # the proxy asks for HTTP Basic auth instead of a login page.
+        self.proxy_error = None
         self.state = CONNECTING
         self.base_url = ""
         self.error = None
@@ -122,7 +125,7 @@ class Router(GObject.Object):
             self.error = error
             self._set_state(OFFLINE)
             if getattr(error, "kind", None) == PROXY_LOGIN:
-                self.emit("proxy-login", error.url)
+                self._proxy_login(error)
         waiting, self._resolving = self._resolving, []
         for done in waiting:
             if done:
@@ -152,7 +155,7 @@ class Router(GObject.Object):
                     if error.kind == AUTH:
                         self.unauthorized()
                     elif error.kind == PROXY_LOGIN:
-                        self.emit("proxy-login", error.url or self.base_url)
+                        self._proxy_login(error)
                     elif error.kind == NETWORK and retry:
                         self.resolve(lambda e: attempt(False)() if e is None
                                      else done(None, e))
@@ -161,7 +164,7 @@ class Router(GObject.Object):
 
             def proxy_or_server(probe_error, error):
                 if getattr(probe_error, "kind", None) == PROXY_LOGIN:
-                    self.emit("proxy-login", probe_error.url)
+                    self._proxy_login(probe_error)
                     done(None, probe_error)
                     return
                 if probe_error is None:
@@ -175,6 +178,10 @@ class Router(GObject.Object):
                          else done(None, e))
         else:
             attempt(True)()
+
+    def _proxy_login(self, error):
+        self.proxy_error = error
+        self.emit("proxy-login", error.url or self.base_url)
 
 
 def probe_addresses(probe, remote_url, local_url, done):
@@ -211,5 +218,5 @@ def _probe(probe, url, timeout):
         return probe(url, timeout)
     except HttpError as e:
         if e.kind == AUTH or (e.kind == SERVER and e.status == 403):
-            raise proxy_login(url) from None
+            raise proxy_login(url, e.challenge) from None
         raise

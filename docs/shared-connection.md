@@ -9,6 +9,15 @@ sources:
   - id: soup-cert
     resource: https://gnome.pages.gitlab.gnome.org/libsoup/libsoup-3.0/method.Message.set_tls_client_certificate.html
     title: libsoup 3, soup_message_set_tls_client_certificate
+  - id: pangolin-header
+    resource: https://github.com/fosrl/pangolin/blob/9af8dad/server/routers/badger/verifySession.ts
+    title: Pangolin, verifySession (header auth, headerAuthChallenged), commit 9af8dad (2026-11-02)
+  - id: badger
+    resource: https://github.com/fosrl/badger/blob/2b781d2/main.go
+    title: Pangolin's Traefik plugin Badger, main.go, commit 2b781d2 (2026-10-21)
+  - id: jellyfin-auth
+    resource: https://github.com/jellyfin/jellyfin/blob/804eb74/Jellyfin.Server.Implementations/Security/AuthorizationContext.cs
+    title: Jellyfin, AuthorizationContext (GetAuthorizationDictionary), commit 804eb74 (2026-11-03)
   - id: nm-dbus
     resource: https://networkmanager.dev/docs/api/latest/spec.html
     title: NetworkManager D-Bus API (ActiveConnections, AccessPoint.Ssid)
@@ -45,7 +54,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
-| `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies |
+| `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests |
 
@@ -140,9 +149,49 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
   login and checks again afterwards; `apply()` stores the cookies. Apps
   connect the router's `proxy-login` signal to `sign_in()`, so an expired
   session opens the login page again.
-- Not covered yet: HTTP Basic auth at the proxy (WebKit's own dialog
-  appears in the login page, but the app's requests don't send it) and
-  static access-token headers.
+- Not covered yet: static access-token headers (Pangolin's access
+  tokens go into URLs, which the apps never do).
+
+## HTTP Basic auth at the proxy (`ProxyCredentials`)
+
+A login page every 30 days (Pangolin's default `resource_session_length_hours`
+720) is too often for the owner, so a proxy that takes HTTP Basic auth
+can be signed in once for good
+([decision](decisions/proxy-basic-auth.md)). Pangolin calls this
+"header authentication" (per resource: user name and password, stored as
+a hash)[^pangolin-header]:
+
+- **Pangolin**: a valid `Authorization: Basic …` header lets the request
+  through without a session. With "extended compatibility" a request
+  without it gets `401` with `WWW-Authenticate: Basic realm="pangolin"`;
+  without it, the usual redirect to the login page. Pangolin's Traefik
+  plugin Badger **passes the `Authorization` header on to the server**
+  (it removes only its own headers and session cookie)[^badger].
+- **So the server must not use `Authorization` itself.** Navidrome's
+  Subsonic API and MeTube don't (Nauta: credentials in the body). Jellyfin
+  does: it reads its token from `Authorization` and looks at
+  `X-Emby-Authorization`/`X-Emby-Token` only when that header is empty
+  **and** "EnableLegacyAuthorization" is on (off by default)[^jellyfin-auth].
+  Ephyra therefore does not offer it.
+- `http.Client.proxy_auth` is `{origin: "Basic …"}` like `cookies`: sent
+  only to that origin (the remote address), also for the media proxy;
+  an `Authorization` header the app sets itself wins.
+- `HttpError.challenge` keeps a 401's `WWW-Authenticate`;
+  `wants_basic` is true for Basic. The router keeps the last proxy-login
+  error in `proxy_error`; `proxy_login.sign_in(…, on_basic=…)` opens no
+  web page for a Basic challenge (WebKit would only show its own
+  dialog) and calls `on_basic()`, so the app points to its form.
+- `ProxyCredentials(keyring)` keeps `{origin: {"user", "password"}}` in
+  one secret (kind `proxy-credentials`); `headers()` gives
+  `Client.proxy_auth`.
+- `ConnectionForm(…, proxy_basic=True)` adds the expander row "Proxy
+  Login" (user name, password) to the Server group. On a Basic
+  challenge it expands, marks both rows and says so; `apply()` keeps the
+  credentials for the remote address and forgets those of an old one.
+
+Use a user name and password made for this only (random, from the
+password manager), never a real login; on a lost device change them in
+Pangolin and block its client certificate.
 
 WebKitGTK 6 is part of `org.gnome.Platform//51` (`WebKit-6.0.typelib`,
 checked in the local runtime); on Ubuntu hosts `gir1.2-webkit-6.0`.

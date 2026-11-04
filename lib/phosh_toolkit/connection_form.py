@@ -5,7 +5,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from phosh_toolkit import network, proxy_login, route, tls
 from phosh_toolkit.http import (AUTH, CERTIFICATE_REQUIRED, PROXY_LOGIN, Client,
-                                HttpError, origin)
+                                HttpError, basic_auth, origin)
 from phosh_toolkit.router import probe_addresses
 
 
@@ -16,6 +16,9 @@ def describe_error(error):
             return "The server asks for a client certificate. Choose yours above."
         if error.kind == AUTH:
             return "Wrong user name or password"
+        if error.kind == PROXY_LOGIN and error.wants_basic:
+            return ("The proxy in front of the server asks for its user name "
+                    "and password. Enter them under Proxy Login.")
         if error.kind == PROXY_LOGIN:
             return "The proxy in front of the server asks for its own login"
         return str(error)
@@ -35,10 +38,15 @@ class ConnectionForm:
     - `user_agent` is used for the probe's http.Client.
     - `server_description` and `home_description` are the group
       descriptions, e.g. "The address you use to reach MyServer from
-      anywhere"."""
+      anywhere".
+    - `proxy_basic` adds "Proxy Login" (user name and password of a
+      proxy's HTTP Basic auth, such as Pangolin's header authentication),
+      kept in the keyring for the remote address (ProxyCredentials). Only
+      for servers that don't use the Authorization header themselves."""
 
     def __init__(self, window, account, certificates, probe, user_agent, *,
-                 server_description, home_description, toast=None):
+                 server_description, home_description, toast=None,
+                 proxy_basic=False):
         self.window = window
         self.certificates = certificates
         self.probe = probe
@@ -77,6 +85,22 @@ class ConnectionForm:
         self.server.add(self.cert_row)
         self.password = Adw.PasswordEntryRow(title="Certificate Password")
         self.server.add(self.password)
+        self.credentials = proxy_login.ProxyCredentials(certificates.keyring)
+        self.proxy = None
+        if proxy_basic:
+            user, password = self.credentials.get(account.remote_url)
+            self.proxy = Adw.ExpanderRow(
+                title="Proxy Login",
+                subtitle="Only if the proxy in front of the server asks for "
+                         "a user name and password")
+            self.proxy_user = Adw.EntryRow(title="Proxy User Name", text=user)
+            self.proxy_password = Adw.PasswordEntryRow(title="Proxy Password",
+                                                       text=password)
+            self.proxy.add_row(self.proxy_user)
+            self.proxy.add_row(self.proxy_password)
+            self.proxy.set_expanded(bool(user))
+            self.server.add(self.proxy)
+        self._remote_at_start = account.remote_url
 
         self.home = Adw.PreferencesGroup(title="Home Network",
                                          description=home_description)
@@ -237,11 +261,25 @@ class ConnectionForm:
             raise route.AddressError("Enter the server address")
         return tuple(values)
 
+    def proxy_credentials(self):
+        """(user, password) from the Proxy Login rows, or ("", "")."""
+        if self.proxy is None:
+            return "", ""
+        return (self.proxy_user.get_text().strip(),
+                self.proxy_password.get_text())
+
     def apply(self, account):
         """Write the form into `account` and keep the certificate."""
         account.remote_url, account.local_url = self.addresses()
         account.home_networks = list(self.networks)
         self.cookies.save(self.proxy_cookies)
+        if self.proxy is not None:
+            old = self._remote_at_start
+            if old and account.remote_url and origin(old) != origin(account.remote_url):
+                self.credentials.set(old, "", "")
+            if account.remote_url:
+                self.credentials.set(account.remote_url, *self.proxy_credentials())
+            self._remote_at_start = account.remote_url
         if self.certificate_data is not None:
             self.certificates.save(self.certificate_data,
                                    self.password.get_text())
@@ -274,8 +312,22 @@ class ConnectionForm:
         http = Client(self.user_agent)
         http.certificate = certificate
         http.cookies = dict(self.proxy_cookies)
+        user, proxy_password = self.proxy_credentials()
+        if self.proxy is not None:
+            self.proxy_user.remove_css_class("error")
+            self.proxy_password.remove_css_class("error")
+        if user and remote:
+            http.proxy_auth = {origin(remote): basic_auth(user, proxy_password)}
 
         def probed(answers, error):
+            if getattr(error, "kind", None) == PROXY_LOGIN and error.wants_basic \
+                    and self.proxy is not None:
+                self.proxy.set_expanded(True)
+                self.proxy_user.add_css_class("error")
+                self.proxy_password.add_css_class("error")
+                self.toast(describe_error(error))
+                done(None, None)
+                return
             if getattr(error, "kind", None) == PROXY_LOGIN and \
                     self._proxy_login(error, http, remote or local, done):
                 return
