@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-04
+* **Update**: `AGENTS.md`: commands for the owner come one per code block, without comments inside, so each can be copied on its own (owner's request).
 * **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md) rule 9 "Swipe back everywhere" (owner's requirement for all apps): every opened page is pushed onto an `AdwNavigationView` so the left-to-right swipe closes it with libadwaita's animation; no stack switching with own back buttons; pages a button opens must not be the root of a collapsed split view (Cirro's places list, cirro#50); `can-pop` stays true; drag-taking widgets are checked on the phone. Gesture facts read in libadwaita's source (GitHub mirror, docs host blocked). `AGENTS.md` and the design review checklist point to it.
 
 ## 2026-11-03
