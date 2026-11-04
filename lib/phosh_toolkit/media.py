@@ -10,6 +10,9 @@ playbin opens the proxy URL itself (souphttpsrc, hlsdemux).
 The object offers the part of the GtkMediaStream API the player uses:
 properties playing, prepared, ended, timestamp and duration (µs),
 seekable, error, and the methods play, pause, set_playing, seek, stop.
+On top: the choice of the audio track (select_audio) and position_now.
+Subtitles are never played by GStreamer: an app that shows them draws
+them itself (Ephyra, docs/decisions/subtitles-in-app.md there).
 """
 import logging
 
@@ -49,6 +52,25 @@ def video_sink():
     return sink, paintable
 
 
+def select(streams, audio_position):
+    """Stream ids to play from a stream collection (GstStream objects in
+    collection order): the first video and the `audio_position`-th audio
+    track (None: the first), never a subtitle. playbin3 by itself also
+    shows the first embedded subtitle; a subtitle file through its
+    `suburi` made later selections hang ("Still have streams to
+    activate", GStreamer 1.28.7, 2026-11-04)."""
+    def of(kind):
+        return [s for s in streams if s.get_stream_type() & kind]
+    videos = of(Gst.StreamType.VIDEO)
+    audios = of(Gst.StreamType.AUDIO)
+    chosen = [s.get_stream_id() for s in videos[:1]]
+    if audios:
+        position = audio_position if audio_position is not None and \
+            0 <= audio_position < len(audios) else 0
+        chosen.append(audios[position].get_stream_id())
+    return chosen
+
+
 class Media(GObject.Object):
     __gtype_name__ = "PhoshToolkitMedia"
 
@@ -60,13 +82,17 @@ class Media(GObject.Object):
     duration = GObject.Property(type=GObject.TYPE_INT64, default=0)
     error = GObject.Property(type=str, default="")
 
-    def __init__(self, uri, video=True):
-        """`video` False plays sound only (music)."""
+    def __init__(self, uri, video=True, audio_position=None):
+        """`video` False plays sound only (music). audio_position: which
+        of the file's audio tracks plays, in file order; None: the
+        first."""
         super().__init__()
         init()
         self.pipeline = Gst.ElementFactory.make("playbin3", None) or \
             Gst.ElementFactory.make("playbin", None)
         self.pipeline.props.uri = uri
+        self.audio_position = audio_position
+        self._collection = None
         self._name = self.pipeline.get_name()
         self.paintable = None
         if video:
@@ -114,6 +140,8 @@ class Media(GObject.Object):
     def set_playing(self, playing):
         """Like GtkMediaStream, "playing" is the requested state; it turns
         false by itself at the end or on an error."""
+        if self.pipeline is None:
+            return
         if playing and self.ended:
             self.ended = False
         state = Gst.State.PLAYING if playing else Gst.State.PAUSED
@@ -125,12 +153,36 @@ class Media(GObject.Object):
 
     def seek(self, timestamp):
         """Seek to `timestamp` µs."""
+        if self.pipeline is None:
+            return
         self.pipeline.seek_simple(
             Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
             max(0, timestamp) * Gst.USECOND)
         self.timestamp = max(0, timestamp)
 
+    def select_audio(self, position):
+        """Play the `position`-th audio track of the file, without
+        restarting."""
+        self.audio_position = position
+        self._select_streams()
+
+    def position_now(self):
+        """The position in µs straight from the pipeline, between the
+        250 ms updates of `timestamp` (e.g. for subtitle timing)."""
+        if self.pipeline is None:
+            return self.timestamp
+        ok, value = self.pipeline.query_position(Gst.Format.TIME)
+        return value // Gst.USECOND if ok and value >= 0 else self.timestamp
+
     def stop(self):
+        """Stop for good. The pipeline and the paintable are released here,
+        on the main thread: gtk4paintablesink aborts the process ("Value
+        dropped on a different thread than where it was created") when
+        Python's garbage collector frees it on another thread, e.g. one of
+        the media proxy's, which happened in Ephyra after leaving the
+        player (2026-11-04)."""
+        if self.pipeline is None:
+            return
         if self._tick:
             GLib.source_remove(self._tick)
             self._tick = 0
@@ -140,6 +192,8 @@ class Media(GObject.Object):
             bus.remove_signal_watch()
             self._bus_handler = 0
         self.pipeline.set_state(Gst.State.NULL)
+        self.pipeline = None
+        self.paintable = None
         if self.playing:
             self.playing = False
 
@@ -164,6 +218,18 @@ class Media(GObject.Object):
         elif kind in (Gst.MessageType.DURATION_CHANGED, Gst.MessageType.ASYNC_DONE,
                       Gst.MessageType.STATE_CHANGED):
             self._update_state()
+        elif kind == Gst.MessageType.STREAM_COLLECTION:
+            self._collection = message.parse_stream_collection()
+            self._select_streams()
+
+    def _select_streams(self):
+        if self._collection is None or self.pipeline is None:
+            return
+        streams = [self._collection.get_stream(i)
+                   for i in range(self._collection.get_size())]
+        chosen = select(streams, self.audio_position)
+        if chosen:
+            self.pipeline.send_event(Gst.Event.new_select_streams(chosen))
 
     def _query_duration(self):
         ok, value = self.pipeline.query_duration(Gst.Format.TIME)
