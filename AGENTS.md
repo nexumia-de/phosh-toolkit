@@ -181,6 +181,20 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   [../phosh-toolkit/docs/shared-connection.md](docs/shared-connection.md))
   and is pulled into an app's Flatpak manifest pinned to a toolkit tag,
   never `main`.
+- **Shared code is fixed once, and every app adopts it.** A bug
+  reported for one app whose cause is in `phosh_toolkit` is fixed in
+  phosh-toolkit, not worked around in the app. The task is finished only
+  when every app that uses the changed module has adopted it in its own
+  pull request (pin bump, plus any wiring) or has an issue for it. Which
+  app uses which module is listed in
+  [../phosh-toolkit/docs/shared-connection.md](docs/shared-connection.md#used-by);
+  keep that list current when an app starts or stops using a module.
+- Shared behaviour is on by default: an app should get a toolkit fix
+  from the pin bump alone. Opt-in switches are only for behaviour some
+  apps must not have (e.g. `proxy_basic` for servers that use the
+  `Authorization` header).
+- After a toolkit change that apps need, ask the owner to tag a toolkit
+  release; the apps' update checks then open the pin-bump pull requests.
 - New apps start from the skeleton in `../phosh-toolkit/examples/`.
 - Details:
   [../phosh-toolkit/docs/decisions/code-reuse.md](docs/decisions/code-reuse.md).

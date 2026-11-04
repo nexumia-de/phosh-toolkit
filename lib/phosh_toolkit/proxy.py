@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from gi.repository import Gio, GLib
 
 from phosh_toolkit.http import HttpError
+from phosh_toolkit.router import Router
 
 log = logging.getLogger("phosh_toolkit.proxy")
 
@@ -31,15 +32,24 @@ class MediaProxy:
     threads for every request. It may return a fourth item, a form body
     (bytes): the request then goes up as POST with that body, so
     credentials can travel in the body instead of the URL (Subsonic's
-    formPost); the answer to a HEAD is still sent without body."""
+    formPost); the answer to a HEAD is still sent without body.
 
-    def __init__(self, forward):
+    When `forward` is a method of a router.Router (the usual
+    `MediaProxy(connection.forward)`), the proxy follows that router by
+    itself (follow()): a playing stream moves to the new address when the
+    route changes. `router` names it explicitly otherwise."""
+
+    def __init__(self, forward, router=None):
         self.forward = forward
         self.secret = secrets.token_urlsafe(24)
         self._server = None
         self._lock = threading.Lock()
         self._active = set()     # Gio.Cancellable of running upstream reads
         self._router_url = None
+        self._following = None
+        router = router or getattr(forward, "__self__", None)
+        if isinstance(router, Router):
+            self.follow(router)
 
     def reroute(self):
         """Cut the running upstream reads, e.g. after the route changed:
@@ -53,7 +63,11 @@ class MediaProxy:
     def follow(self, router):
         """reroute() whenever `router` (router.Router) switches to another
         address, so playback moves from the local to the remote address
-        (and back) without waiting for a timeout."""
+        (and back) without waiting for a timeout. Called by the constructor
+        for a router's forward(); calling it again does nothing."""
+        if self._following is router:
+            return
+        self._following = router
         self._router_url = router.base_url
 
         def changed(r):

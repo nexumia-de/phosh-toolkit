@@ -36,6 +36,16 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 ([code reuse](decisions/code-reuse.md)). Pulling it into an app:
 [toolkit usage](toolkit-usage.md#3c-shared-python-package).
 
+# Used by
+
+| App | Modules |
+|---|---|
+| [Ephyra](https://github.com/nexumia-de/ephyra) (Jellyfin) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` off |
+| [Nauta](https://github.com/nexumia-de/nauta) (Navidrome, MeTube) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` on |
+
+A change to a module is adopted in every app listed for it, in the same
+task (`AGENTS.md`, "Shared code"). Keep this table current.
+
 # Modules
 
 | Module | GTK | What |
@@ -261,8 +271,9 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
   identity` keeps lengths right; without a length the answer ends by
   closing.
 - `reroute()` cancels the running upstream reads; `follow(router)` does
-  that whenever the router's address changes. Apps call
-  `proxy.follow(connection)` once.
+  that whenever the router's address changes. `MediaProxy(connection.forward)`
+  follows the router by itself (`forward` is a router method); apps
+  need no extra call.
 
 `Media` plays the proxy URL with `playbin3`. `Gtk.MediaFile` can't be
 used in GTK 4.20 (GNOME 51): its GStreamer backend reads the URI through
