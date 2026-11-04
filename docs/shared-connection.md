@@ -45,6 +45,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
+| `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests |
 
@@ -108,6 +109,50 @@ the server id check keeps safe.
 - The server certificate is checked against the system's CAs; a private
   CA is not supported yet (Ephyra's follow-up issue).
 
+# Proxy login (`proxy_login`)
+
+Many self-hosters put a login of the reverse proxy in front of their
+servers (Pangolin's resource authentication, Authelia, Authentik,
+oauth2-proxy, …). A browser keeps the proxy's session in a cookie; an app
+has none, so the proxy answers instead of the server. Found with the
+owner's Jellyfin on 2026-11-04: mutual TLS completed, then the public
+`/System/Info/Public` answered `401`, `text/plain`, `Unauthorized`; with
+the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
+
+- **Detection** (`http`, `router`): a web page where JSON was asked for
+  (`Accept: application/json`, the usual redirect to a login page), or a
+  `401`/`403` on the probe, which needs no credentials, so only a proxy
+  refuses it, becomes `HttpError` kind `proxy-login` with the address to
+  open. A `401` on any other call is checked with the probe: if the probe
+  is refused too, the proxy's session ran out (signal `proxy-login`, no
+  sign-out); if the probe answers, the server rejected the credentials
+  (`unauthorized()`).
+- **Login** (`make_page`, `sign_in`): an `AdwNavigationPage` with a
+  WebKitGTK 6 web view in an ephemeral network session opens the
+  address. WebKit's client-certificate request is answered with the app's
+  certificate, so mutual TLS works there too. After each page load the
+  cookies for the server's origin are tried with the app's probe in a
+  separate client; once the server answers, the page reports them.
+- **Session**: `CookieJar` keeps `{origin: "name=value; …"}` in the app's
+  keyring (kind `proxy-cookies`); `http.Client.cookies` sends them only to
+  that origin, also for the media proxy's upstream requests.
+- The connection form shows the login page when its check meets a proxy
+  login and checks again afterwards; `apply()` stores the cookies. Apps
+  connect the router's `proxy-login` signal to `sign_in()`, so an expired
+  session opens the login page again.
+- Not covered yet: HTTP Basic auth at the proxy (WebKit's own dialog
+  appears in the login page, but the app's requests don't send it) and
+  static access-token headers.
+
+WebKitGTK 6 is part of `org.gnome.Platform//51` (`WebKit-6.0.typelib`,
+checked in the local runtime); on Ubuntu hosts `gir1.2-webkit-6.0`.
+Outside Flatpak WebKit sandboxes its web processes with bubblewrap and
+aborts the whole process if that fails; GitHub's Ubuntu 24.04 runners
+restrict the user namespaces it needs (AppArmor), so the two web-view
+tests skip there (`testing.webkit_sandbox_works()`) and run where the
+sandbox works, e.g. in the cloud dev container. The rest of the proxy
+login is tested everywhere.
+
 # Connection form (`connection_form`)
 
 `ConnectionForm` builds the "Server" group (address, client certificate,
@@ -156,7 +201,9 @@ phone, 2026-11-04). `video=False` plays sound only.
 with certificates made by `openssl` (refused without, works with PKCS #12
 and PEM), the nginx page, the route at home, away, with the local
 server down and with a different server, retry after a network error,
-401, strict mode, the proxy with ranges through mutual TLS and with a
+401, strict mode, a proxy login (detected, signed in through the
+web view over mutual TLS, cookies kept and sent, an expired proxy session
+not taken for a server sign-out), the proxy with ranges through mutual TLS and with a
 `POST` form body, a WAV played, paused,
 seeked and ended through the proxy, the image cache, and the connection
 form with real widgets under `xvfb-run`.

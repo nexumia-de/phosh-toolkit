@@ -6,7 +6,8 @@ import logging
 from gi.repository import GObject
 
 from phosh_toolkit import network, route, tasks
-from phosh_toolkit.http import AUTH, NETWORK, HttpError
+from phosh_toolkit.http import (AUTH, NETWORK, PROXY_LOGIN, SERVER, HttpError,
+                                proxy_login)
 
 log = logging.getLogger("phosh_toolkit.router")
 
@@ -40,6 +41,9 @@ class Router(GObject.Object):
 
     __gsignals__ = {
         "state-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        # A reverse proxy in front of the server wants its own login; the
+        # argument is the address to open (proxy_login.py).
+        "proxy-login": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self, watch=True):
@@ -91,7 +95,7 @@ class Router(GObject.Object):
         error = HttpError(NETWORK, "No server address")
         for kind, url in self.candidates(ssids):
             try:
-                server_id, info = self.probe(url, route.TIMEOUT[kind])
+                server_id, info = _probe(self.probe, url, route.TIMEOUT[kind])
             except HttpError as e:
                 log.info("%s %s: %s", kind, url, e)
                 # The remote error explains more (certificate, TLS).
@@ -117,6 +121,8 @@ class Router(GObject.Object):
         else:
             self.error = error
             self._set_state(OFFLINE)
+            if getattr(error, "kind", None) == PROXY_LOGIN:
+                self.emit("proxy-login", error.url)
         waiting, self._resolving = self._resolving, []
         for done in waiting:
             if done:
@@ -131,18 +137,37 @@ class Router(GObject.Object):
 
     def call(self, fn, done, *args):
         """tasks.run(fn, …) with the route resolved first, one retry
-        through a new route after a network error, and unauthorized() on
-        401."""
+        through a new route after a network error, and on 401 either
+        unauthorized() (the server refused the credentials) or the
+        "proxy-login" signal (a proxy in front of it wants its login)."""
         def attempt(retry):
             def finished(result, error):
                 if isinstance(error, HttpError):
+                    if error.kind == AUTH and self.base_url:
+                        # The server, or a proxy in front of it? The probe
+                        # needs no credentials, so only a proxy refuses it.
+                        tasks.run(_probe, lambda r, e: proxy_or_server(e, error),
+                                  self.probe, self.base_url, 15)
+                        return
                     if error.kind == AUTH:
                         self.unauthorized()
+                    elif error.kind == PROXY_LOGIN:
+                        self.emit("proxy-login", error.url or self.base_url)
                     elif error.kind == NETWORK and retry:
                         self.resolve(lambda e: attempt(False)() if e is None
                                      else done(None, e))
                         return
                 done(result, error)
+
+            def proxy_or_server(probe_error, error):
+                if getattr(probe_error, "kind", None) == PROXY_LOGIN:
+                    self.emit("proxy-login", probe_error.url)
+                    done(None, probe_error)
+                    return
+                if probe_error is None:
+                    # The server answers the probe: it rejected us.
+                    self.unauthorized()
+                done(None, error)
             return lambda: tasks.run(fn, finished, *args)
 
         if not self.base_url:
@@ -163,7 +188,7 @@ def probe_addresses(probe, remote_url, local_url, done):
             if not url:
                 continue
             try:
-                server_id, answers[kind] = probe(url, route.TIMEOUT[kind])
+                server_id, answers[kind] = _probe(probe, url, route.TIMEOUT[kind])
                 ids.add(server_id)
             except HttpError as e:
                 answers[kind] = e
@@ -176,3 +201,15 @@ def probe_addresses(probe, remote_url, local_url, done):
         return answers
 
     tasks.run(work, done)
+
+
+def _probe(probe, url, timeout):
+    """probe(url, timeout), with a refusal turned into PROXY_LOGIN: the
+    probe asks without credentials, so a 401 or 403 there comes from a
+    proxy in front of the server, not from the server."""
+    try:
+        return probe(url, timeout)
+    except HttpError as e:
+        if e.kind == AUTH or (e.kind == SERVER and e.status == 403):
+            raise proxy_login(url) from None
+        raise

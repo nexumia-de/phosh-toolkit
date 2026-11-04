@@ -22,11 +22,18 @@ MEDIA = bytes(range(256)) * 4096   # 1 MiB for range tests
 class FakeServer:
     """GET /info answers {"id": server_id}; /media serves MEDIA with
     ranges; /private needs "Authorization: Bearer good" (else 401); /nginx
-    answers like nginx without a client certificate."""
+    answers like nginx without a client certificate; /page is a web page.
+
+    With login=True it behaves like a reverse proxy with its own login
+    (Pangolin, Authelia, …): without the cookie "proxy-session=ok" a
+    browser (Accept: text/html) is redirected to /auth/login, anything else
+    gets 401 "Unauthorized". The login page submits itself (as if the user
+    signed in); the answer sets the cookie and redirects back."""
 
     def __init__(self, server_id="server-a", context=None):
         self.server_id = server_id
         self.requests = []
+        self.login = False
         self.bodies = []      # of POST requests
         owner = self
 
@@ -80,15 +87,44 @@ class _Handler(BaseHTTPRequestHandler):
         self.server_owner.bodies.append(self.rfile.read(length))
         self.do_GET()
 
+    def _proxy_login(self, path):
+        """True if the proxy answered instead of the server."""
+        if not self.server_owner.login or \
+                "proxy-session=ok" in (self.headers.get("Cookie") or ""):
+            return False
+        if path == "/auth/login" and self.command == "POST":
+            self.send_response(302)
+            self.send_header("Set-Cookie", "proxy-session=ok; Path=/; HttpOnly")
+            self.send_header("Location", "/info")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif path == "/auth/login":
+            self._send(200, b"<html><body><form method=post action=/auth/login>"
+                       b"<input name=pin value=1234></form>"
+                       b"<script>document.forms[0].submit()</script>"
+                       b"</body></html>", "text/html")
+        elif "text/html" in (self.headers.get("Accept") or ""):
+            self.send_response(302)
+            self.send_header("Location", "/auth/login")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        else:
+            self._send(401, b"Unauthorized", "text/plain")
+        return True
+
     def do_GET(self):
         owner = self.server_owner
         owner.requests.append((self.command, self.path, dict(self.headers)))
         path = self.path.split("?")[0]
+        if self._proxy_login(path):
+            return
         if path == "/info":
             self._send(200, json.dumps({"id": owner.server_id}).encode())
         elif path == "/private":
             ok = self.headers.get("Authorization") == "Bearer good"
             self._send(200 if ok else 401, b"{}")
+        elif path == "/page":
+            self._send(200, b"<html><body>Sign in</body></html>", "text/html")
         elif path == "/nginx":
             self._send(400, b"<html><head><title>400 No required SSL "
                        b"certificate was sent</title></head></html>",

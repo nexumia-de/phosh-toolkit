@@ -3,6 +3,7 @@ certificate. Every thread gets its own SoupSession, so connections are
 reused within a thread and no session is shared between threads.
 No GTK."""
 import threading
+from urllib.parse import urlsplit
 
 import gi
 
@@ -14,13 +15,29 @@ TLS = "tls"                  # handshake failed, untrusted server
 CERTIFICATE_REQUIRED = "certificate-required"
 AUTH = "auth"                # 401
 SERVER = "server"            # other HTTP errors
+# A reverse proxy in front of the server wants its own login (SSO);
+# HttpError.url is the address to open in the login window.
+PROXY_LOGIN = "proxy-login"
 
 
 class HttpError(Exception):
-    def __init__(self, kind, message, status=0):
+    def __init__(self, kind, message, status=0, url=""):
         super().__init__(message)
         self.kind = kind
         self.status = status
+        self.url = url
+
+
+def origin(url):
+    """"https://host:port" of a URL, the key of Client.cookies."""
+    parts = urlsplit(url)
+    port = parts.port or {"http": 80, "https": 443}.get(parts.scheme, 0)
+    return f"{parts.scheme}://{(parts.hostname or '').lower()}:{port}"
+
+
+def proxy_login(url):
+    return HttpError(PROXY_LOGIN, "The proxy in front of the server asks for "
+                     "its own login", url=url)
 
 
 def classify(error):
@@ -68,6 +85,9 @@ class Client:
         # Trusted CAs for the server certificate; None is the system's.
         # Tests set their own CA here.
         self.tls_database = None
+        # Cookie header per origin (see origin()): the session of a
+        # reverse proxy's own login (proxy_login.py). Replaced as a whole.
+        self.cookies = {}
 
     def _session(self):
         session = getattr(self._local, "session", None)
@@ -96,6 +116,9 @@ class Client:
         # connection form turns into "choose your client certificate".
         if self.certificate is not None:
             msg.set_tls_client_certificate(self.certificate)
+        cookie = self.cookies.get(origin(url))
+        if cookie:
+            msg.props.request_headers.replace("Cookie", cookie)
         return msg
 
     def request(self, method, url, headers=None, body=None,
@@ -115,6 +138,11 @@ class Client:
         status = msg.get_status()
         response = Response(status, _headers(msg.props.response_headers),
                             data.get_data() or b"")
+        if _wants_json(headers) and status < 400 and \
+                _header(response.headers, "Content-Type").startswith("text/html"):
+            # An API never answers with a web page: a proxy's login page,
+            # usually reached through a redirect.
+            raise proxy_login(url)
         if status in (400, 403) and is_certificate_page(response.body):
             raise HttpError(CERTIFICATE_REQUIRED,
                             "The server asks for a client certificate", status)
@@ -135,6 +163,17 @@ class Client:
         except GLib.Error as e:
             raise classify(e) from None
         return msg.get_status(), _headers(msg.props.response_headers), stream
+
+
+def _wants_json(headers):
+    return "json" in (_header(headers or {}, "Accept") or "")
+
+
+def _header(headers, name):
+    for key, value in headers.items():
+        if key.lower() == name.lower():
+            return value
+    return ""
 
 
 def _headers(soup_headers):

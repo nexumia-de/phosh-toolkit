@@ -3,8 +3,9 @@ network (phosh-toolkit docs/shared-connection.md). The same groups serve
 the first-run setup page and the "Connection" page of the preferences."""
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from phosh_toolkit import network, route, tls
-from phosh_toolkit.http import AUTH, CERTIFICATE_REQUIRED, Client, HttpError
+from phosh_toolkit import network, proxy_login, route, tls
+from phosh_toolkit.http import (AUTH, CERTIFICATE_REQUIRED, PROXY_LOGIN, Client,
+                                HttpError, origin)
 from phosh_toolkit.router import probe_addresses
 
 
@@ -15,6 +16,8 @@ def describe_error(error):
             return "The server asks for a client certificate. Choose yours above."
         if error.kind == AUTH:
             return "Wrong user name or password"
+        if error.kind == PROXY_LOGIN:
+            return "The proxy in front of the server asks for its own login"
         return str(error)
     return str(error) or "Something went wrong"
 
@@ -45,6 +48,12 @@ class ConnectionForm:
         self.certificate_data = None     # newly chosen file
         self.has_certificate = account.certificate
         self.networks = list(account.home_networks)
+        # Proxy login (proxy_login.py): the stored cookies, plus new ones
+        # from a login in this form, saved by apply().
+        self.cookies = proxy_login.CookieJar(certificates.keyring)
+        self.proxy_cookies = self.cookies.load()
+        # Tests: (Gio.TlsCertificate, host) pairs the login view trusts.
+        self.trusted = ()
 
         self.server = Adw.PreferencesGroup(title="Server",
                                            description=server_description)
@@ -232,6 +241,7 @@ class ConnectionForm:
         """Write the form into `account` and keep the certificate."""
         account.remote_url, account.local_url = self.addresses()
         account.home_networks = list(self.networks)
+        self.cookies.save(self.proxy_cookies)
         if self.certificate_data is not None:
             self.certificates.save(self.certificate_data,
                                    self.password.get_text())
@@ -263,8 +273,12 @@ class ConnectionForm:
         self.password.remove_css_class("error")
         http = Client(self.user_agent)
         http.certificate = certificate
+        http.cookies = dict(self.proxy_cookies)
 
         def probed(answers, error):
+            if getattr(error, "kind", None) == PROXY_LOGIN and \
+                    self._proxy_login(error, http, remote or local, done):
+                return
             if error is not None:
                 if getattr(error, "kind", None) == CERTIFICATE_REQUIRED:
                     self.cert_row.add_css_class("error")
@@ -278,6 +292,36 @@ class ConnectionForm:
             done(answers, http)
 
         probe_addresses(self.probe(http), remote, local, probed)
+        return True
+
+    def _proxy_login(self, error, http, server, done):
+        """Show the proxy's login page; afterwards check() again. False if
+        it can't be shown."""
+        nav = getattr(self.window, "nav", None)
+        if nav is None or not proxy_login.available():
+            return False
+
+        state = {"signed_in": False}
+
+        def signed_in(cookies):
+            state["signed_in"] = True
+            self.proxy_cookies[origin(server)] = cookies
+            nav.pop()
+            if not self.check(done):
+                done(None, None)
+
+        def hidden(page):
+            # Swiped back without signing in.
+            if not state["signed_in"] and page.get_parent() is None:
+                done(None, None)
+
+        self.toast(describe_error(error))
+        page = proxy_login.make_page(
+            server, error.url or server, http,
+            lambda client, url, timeout: self.probe(client)(url, timeout),
+            signed_in, self.trusted)
+        page.connect("hidden", hidden)
+        nav.push(page)
         return True
 
     def reachable_url(self, answers):
