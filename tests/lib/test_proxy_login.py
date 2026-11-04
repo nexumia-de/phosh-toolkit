@@ -143,8 +143,9 @@ def test_media_proxy_sends_the_proxy_cookie(proxied):
 
 needs_webkit = pytest.mark.skipif(
     not proxy_login.available()
-    or not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")),
-    reason="needs WebKitGTK 6 and a display")
+    or not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    or not testing.webkit_sandbox_works(),
+    reason="needs WebKitGTK 6, a display and a working bubblewrap sandbox")
 
 
 @pytest.fixture

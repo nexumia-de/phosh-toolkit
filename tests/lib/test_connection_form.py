@@ -98,8 +98,10 @@ def test_wrong_certificate_password(form, mtls_server, pki):
     assert form.password.has_css_class("error")
 
 
-@pytest.mark.skipif(not __import__("phosh_toolkit.proxy_login", fromlist=["x"]).available(),
-                    reason="needs WebKitGTK 6")
+@pytest.mark.skipif(
+    not __import__("phosh_toolkit.proxy_login", fromlist=["x"]).available()
+    or not __import__("phosh_toolkit.testing", fromlist=["x"]).webkit_sandbox_works(),
+    reason="needs WebKitGTK 6 and a working bubblewrap sandbox")
 def test_proxy_login_from_the_form(form, pki):
     from gi.repository import Gio
 

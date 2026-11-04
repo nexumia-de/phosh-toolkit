@@ -146,6 +146,12 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
 
 WebKitGTK 6 is part of `org.gnome.Platform//51` (`WebKit-6.0.typelib`,
 checked in the local runtime); on Ubuntu hosts `gir1.2-webkit-6.0`.
+Outside Flatpak WebKit sandboxes its web processes with bubblewrap and
+aborts the whole process if that fails; GitHub's Ubuntu 24.04 runners
+restrict the user namespaces it needs (AppArmor), so the two web-view
+tests skip there (`testing.webkit_sandbox_works()`) and run where the
+sandbox works, e.g. in the cloud dev container. The rest of the proxy
+login is tested everywhere.
 
 # Connection form (`connection_form`)
 

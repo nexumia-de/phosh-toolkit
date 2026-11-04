@@ -1,5 +1,6 @@
 """Helpers for the apps' tests: a test PKI made with openssl for mutual TLS,
 and running the GLib main loop until a condition holds."""
+import shutil
 import ssl
 import subprocess
 from pathlib import Path
@@ -18,6 +19,20 @@ def run_until(predicate, timeout=10):
             raise TimeoutError("main loop condition not reached")
         context.iteration(False)
         GLib.usleep(2000)
+
+
+def webkit_sandbox_works():
+    """WebKitGTK outside Flatpak runs its web processes in a bubblewrap
+    sandbox with a user namespace and aborts the whole process when that
+    fails (Ubuntu 24.04 restricts unprivileged user namespaces through
+    AppArmor, e.g. on GitHub's runners). Tests that start a web view skip
+    unless this works."""
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        return False
+    result = subprocess.run([bwrap, "--ro-bind", "/", "/", "--unshare-user",
+                             "true"], capture_output=True)
+    return result.returncode == 0
 
 
 def _openssl(*args, cwd):
