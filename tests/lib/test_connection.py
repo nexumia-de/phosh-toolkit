@@ -377,3 +377,23 @@ def test_proxy_follows_the_route(server):
         proxy.stop()
     finally:
         other.stop()
+
+
+def test_proxy_follows_its_router_by_itself(server):
+    """MediaProxy(connection.forward) needs no follow() call."""
+    class Conn(Route):
+        def forward(self, path):
+            return client(), self.base_url + path, {}
+    conn = Conn(client(), server.url, "")
+    proxy = MediaProxy(conn.forward)
+    assert proxy._following is conn
+    calls = []
+    proxy.reroute = lambda: calls.append(1)
+    conn.base_url = server.url
+    conn.emit("state-changed")
+    proxy.follow(conn)          # again: no second handler
+    conn.base_url = "http://127.0.0.1:9"
+    conn.emit("state-changed")
+    assert calls == [1]
+    # A plain function has no router to follow.
+    assert MediaProxy(lambda path: None)._following is None
