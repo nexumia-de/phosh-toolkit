@@ -42,6 +42,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 |---|---|
 | [Ephyra](https://github.com/nexumia-de/ephyra) (Jellyfin) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` off |
 | [Nauta](https://github.com/nexumia-de/nauta) (Navidrome, MeTube) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` on |
+| [Pulsus](https://github.com/nexumia-de/pulsus) (Amazfish's data, display only) | `settings`, `style` |
 
 A change to a module is adopted in every app listed for it, in the same
 task (`AGENTS.md`, "Shared code"). Keep this table current.

@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-04
+* **Update**: [Shared code](shared-connection.md#used-by): Pulsus (nexumia-de/pulsus, a viewer for Amazfish's data) uses `settings` and `style`.
 * **Fix**: [Flatpak workflow](flatpak-workflow.md): released apps had no screenshots in GNOME Software. flatpak-builder's `appstreamcli compose` drops screenshot URLs it cannot download, and a tag run uploads its screenshots only after the build; the Build step now runs compose with `--no-net`. Reproduced with `appstreamcli compose` 1.0.2 and a flatpak-builder 1.4.2 build.
 * **Creation**: [Code structure](code-structure.md) and `AGENTS.md` section "Code structure" plus a "Before committing" check, at the owner's request after a 530-line Nuntius module mixed four jobs (nexumia-de/nuntius#9): one job per file, folder modules for features with several jobs, the project's (or upstream's) layout, about 300 lines as a signal to check, split before the pull request.
 * **Creation**: Decision [code names and visible names](decisions/app-names.md) at the owner's request: repository and app id keep a short code name, the `.desktop` `Name`, metainfo `<name>`, window title and About dialog show a name that says what the app does (GNOME's Nautilus/Files pattern); the agent suggests names, the owner chooses. `AGENTS.md` "Metadata" points to it.
