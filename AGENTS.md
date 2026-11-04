@@ -83,6 +83,11 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 - App id: `de.nexumia.<AppName>` (the owner's domain), never
   `io.github.*`; files are named after it. Why:
   [../phosh-toolkit/docs/decisions/domain-names.md](docs/decisions/domain-names.md).
+- Names: repository and app id use a short code name; the name users
+  see (`.desktop` `Name`, metainfo `<name>`, window title, About dialog)
+  says what the app does. For a new app or a renaming, suggest a few
+  names and let the owner choose; never pick a final name yourself.
+  [Decision](docs/decisions/app-names.md).
 - `.desktop` file: `X-Purism-FormFactor=Workstation;Mobile;` exactly,
   **including the trailing `;`**. Phosh's app grid hides an app in mobile
   mode unless this value contains the substring `mobile;`; the match is
