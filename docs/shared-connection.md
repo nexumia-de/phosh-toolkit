@@ -162,9 +162,18 @@ can be signed in once for good
 a hash)[^pangolin-header]:
 
 - **Pangolin**: a valid `Authorization: Basic …` header lets the request
-  through without a session. With "extended compatibility" a request
-  without it gets `401` with `WWW-Authenticate: Basic realm="pangolin"`;
-  without it, the usual redirect to the login page. Pangolin's Traefik
+  through without a session, alongside Platform SSO (browsers keep
+  their SSO login). With "extended compatibility" a request without it
+  gets `401` with `WWW-Authenticate: Basic realm="pangolin"`, but **only
+  when Platform SSO is off**; with SSO on (the owner's setup) it gets the
+  usual redirect to the login page, so the app shows the web view and the
+  user opens "Proxy Login" by hand. Set in a resource policy, header
+  auth replaces the resources' own: one pair for every resource of that
+  policy (`effectivePolicyHeaderAuth ?? resourceHeaderAuth`); separate
+  pairs need separate policies. Pangolin's mTLS ("Client Certificate
+  (mTLS)") is a Traefik TLS option (`clientAuthType:
+  RequireAndVerifyClientCert` with the policy's CAs), checked in the
+  handshake before and in addition to these methods. Pangolin's Traefik
   plugin Badger **passes the `Authorization` header on to the server**
   (it removes only its own headers and session cookie)[^badger].
 - **So the server must not use `Authorization` itself.** Navidrome's
