@@ -63,7 +63,7 @@ jobs:
             python3-pytest python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 \
             gir1.2-soup-3.0 gir1.2-secret-1 glib-networking \
             gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base \
-            gstreamer1.0-plugins-good openssl xvfb xauth dbus
+            gstreamer1.0-plugins-good gir1.2-webkit-6.0 openssl xvfb xauth dbus
       - name: Run tests
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -v tests/lib
 
