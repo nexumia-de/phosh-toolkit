@@ -59,7 +59,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `keyring` | no | `Keyring(schema, labels, memory_env)`: libsecret, memory fallback |
 | `certificate` | no | `CertificateFile(path, keyring)`: private copy (mode 600), password in the keyring |
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
-| `media` | no | `Media(uri, video=True)`: `playbin3` with a `GtkMediaStream`-like API |
+| `media` | no | `Media(uri, video=True, audio_position=None)`: `playbin3` with a `GtkMediaStream`-like API, audio track choice, no subtitles |
 | `tasks` | no | `run(fn, done)`: worker thread, result on the main loop |
 | `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
@@ -279,6 +279,24 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 used in GTK 4.20 (GNOME 51): its GStreamer backend reads the URI through
 GIO, and the Flatpak has no gvfs for `http://` (found with Ephyra on the
 phone, 2026-11-04). `video=False` plays sound only.
+
+- **Tracks**: `Media` answers playbin3's stream collection with a
+  `select-streams` event: the first video and the `audio_position`-th
+  audio track in file order (None: the first). `select_audio(n)` switches
+  while playing, without a restart. No text stream is ever selected:
+  playbin3 by itself shows the first embedded subtitle, and a subtitle
+  file through its `suburi` made later selections hang ("Still have
+  streams to activate", GStreamer 1.28.7; the audio switched in 2 of 8
+  runs). Apps that show subtitles draw them (Ephyra).
+- `position_now()` reads the position from the pipeline, between the
+  250 ms `timestamp` updates.
+- `stop()` releases the pipeline and the paintable on the main thread:
+  gtk4paintablesink aborts the process when the garbage collector frees
+  it on another thread, e.g. one of the proxy's (Ephyra, 2026-11-04).
+  After `stop()` the object does nothing more.
+- Tested (`tests/lib/test_media.py`): the German of two audio tracks
+  plays, no subtitle, switching to English without a restart; stop()
+  then a release on another thread.
 
 # Security notes
 

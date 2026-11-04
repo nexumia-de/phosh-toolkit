@@ -2,7 +2,9 @@
 import io
 import math
 import struct
+import threading
 import wave
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +19,9 @@ from gi.repository import Gst  # noqa: E402
 
 init()
 needed = ("playbin3", "wavparse", "souphttpsrc")
+# tracks.mkv (made with ffmpeg's smptebars and sine): 30 s VP8 video,
+# English and German Vorbis audio, an embedded English SRT subtitle.
+TRACKS = Path(__file__).resolve().parent / "data" / "tracks.mkv"
 missing = [e for e in needed if Gst.ElementFactory.find(e) is None]
 pytestmark = pytest.mark.skipif(bool(missing), reason=f"GStreamer lacks {missing}")
 
@@ -116,3 +121,56 @@ def test_playback_moves_to_the_new_route(server, monkeypatch):
     finally:
         proxy.stop()
         other.stop()
+
+
+def test_stop_releases_the_pipeline_on_the_main_thread(url):
+    # gtk4paintablesink aborts the process when it is freed on another
+    # thread; Python's garbage collector may run on a proxy thread, so
+    # stop() leaves nothing of the pipeline behind.
+    media = make(url)
+    media.play()
+    run_until(lambda: media.is_prepared() or media.get_error(), 15)
+    media.stop()
+    assert media.pipeline is None and media.paintable is None
+    media.seek(0)
+    media.set_playing(True)
+    holder = [media]
+    del media
+    thread = threading.Thread(target=holder.clear)
+    thread.start()
+    thread.join()
+
+
+@pytest.mark.skipif(any(Gst.ElementFactory.find(e) is None
+                        for e in ("matroskademux", "vorbisdec")),
+                    reason="GStreamer lacks Matroska or Vorbis")
+def test_chosen_audio_track_and_no_subtitle():
+    media = Media(TRACKS.as_uri(), video=False, audio_position=1)
+    media.pipeline.props.audio_sink = Gst.ElementFactory.make("fakesink", None)
+    selected = []
+
+    def on_message(bus, message):
+        if message.type == Gst.MessageType.STREAMS_SELECTED:
+            selected[:] = [message.streams_selected_get_stream(i)
+                           for i in range(message.streams_selected_get_size())]
+
+    def chosen():
+        audio = [s.get_tags().get_string("language-code")[1] for s in selected
+                 if s.get_stream_type() & Gst.StreamType.AUDIO]
+        texts = [s for s in selected if s.get_stream_type() & Gst.StreamType.TEXT]
+        return audio, len(texts)
+
+    media.pipeline.get_bus().connect("message", on_message)
+    try:
+        media.play()
+        # playbin3 first announces its own choice (English and the
+        # embedded subtitle), then the chosen one.
+        run_until(lambda: chosen() == (["de"], 0) or media.get_error(), 15)
+        assert not media.get_error()
+        # Switching needs no restart.
+        media.select_audio(0)
+        run_until(lambda: chosen() == (["en"], 0) or media.get_error(), 15)
+        assert not media.get_error()
+        assert media.position_now() > 0
+    finally:
+        media.stop()
