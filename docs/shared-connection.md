@@ -42,6 +42,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | `media` | no | `Media(uri, video=True)`: `playbin3` with a `GtkMediaStream`-like API |
 | `tasks` | no | `run(fn, done)`: worker thread, result on the main loop |
 | `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
+| `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests |

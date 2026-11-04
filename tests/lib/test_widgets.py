@@ -80,3 +80,17 @@ def test_pages(adw):
     page.get_child().emit("clicked")
     assert retried == [1]
     assert loading_page().get_child() is not None
+
+
+def test_style_row_applies_and_reports(adw):
+    from phosh_toolkit import style
+    manager = Adw.StyleManager.get_default()
+    chosen = []
+    row = style.style_row("light", chosen.append)
+    assert row.get_selected() == 1
+    row.set_selected(2)
+    assert chosen == ["dark"]
+    assert manager.get_color_scheme() == Adw.ColorScheme.FORCE_DARK
+    style.apply("system")
+    assert manager.get_color_scheme() == Adw.ColorScheme.DEFAULT
+    assert style.color_scheme("bogus") == "DEFAULT"
