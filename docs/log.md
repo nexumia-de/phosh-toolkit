@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-04
+* **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md) rule 9 "Swipe back everywhere" (owner's requirement for all apps): every opened page is pushed onto an `AdwNavigationView` so the left-to-right swipe closes it with libadwaita's animation; no stack switching with own back buttons; pages a button opens must not be the root of a collapsed split view (Cirro's places list, cirro#50); `can-pop` stays true; drag-taking widgets are checked on the phone. Gesture facts read in libadwaita's source (GitHub mirror, docs host blocked). `AGENTS.md` and the design review checklist point to it.
+
 ## 2026-11-03
 * **Update**: [Visual design](design.md) and `AGENTS.md`: each app has its own accent colour (only `--accent-bg-color`/`--accent-fg-color` in its `style.css`, foreground with 4.5:1, recorded in the app's `docs/design.md`), and every app offers Follow System / Light / Dark in its preferences; new decision [one accent colour per app](decisions/app-accent-colours.md), at the owner's request for a cleaner, more recognisable look across all apps.
 

@@ -164,6 +164,9 @@ Use this when reviewing a UI change, together with the 360×720 screenshot:
 - [ ] No hard-coded colours or font sizes in UI chrome; the accent only
       in the app's `:root` block.
 - [ ] Exactly one `suggested-action` per view at most.
+- [ ] Every page opened from another page swipes back from left to right
+      ([adaptive UI](adaptive-libadwaita.md), rule 9; checked on the
+      phone).
 - [ ] Every icon-only button has a tooltip and an accessible label.
 - [ ] Empty/error/offline states use `AdwStatusPage`, `AdwToast` or `AdwBanner`.
 - [ ] Capitalisation and Unicode as in rule 7.
