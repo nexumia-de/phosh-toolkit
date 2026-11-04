@@ -124,11 +124,12 @@ class Client:
             raise HttpError(SERVER, f"Server error {status}", status)
         return response
 
-    def open(self, method, url, headers=None):
+    def open(self, method, url, headers=None, body=None,
+             content_type="application/x-www-form-urlencoded"):
         """Blocking request that returns (status, headers, input stream)
         before the body is read, for the media proxy."""
         session = self._session()
-        msg = self._message(method, url, headers, None, None)
+        msg = self._message(method, url, headers, body, content_type)
         try:
             stream = session.send(msg, None)
         except GLib.Error as e:

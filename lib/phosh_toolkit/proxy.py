@@ -28,7 +28,10 @@ FORWARD_RESPONSE = ("Content-Type", "Content-Length", "Content-Range",
 class MediaProxy:
     """`forward(path)` returns (http.Client, upstream URL, headers) for a
     path like "/Videos/<id>/stream?…"; it is called in the proxy's
-    threads for every request."""
+    threads for every request. It may return a fourth item, a form body
+    (bytes): the request then goes up as POST with that body, so
+    credentials can travel in the body instead of the URL (Subsonic's
+    formPost); the answer to a HEAD is still sent without body."""
 
     def __init__(self, forward):
         self.forward = forward
@@ -80,7 +83,7 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         try:
-            client, url, extra = self.owner.forward(self.path[len(prefix) - 1:])
+            client, url, extra, *body = self.owner.forward(self.path[len(prefix) - 1:])
         except Exception as e:  # not signed in, no route
             log.info("proxy: %s", e)
             self.send_error(502, str(e))
@@ -92,7 +95,10 @@ class _Handler(BaseHTTPRequestHandler):
             if self.headers.get(name):
                 headers[name] = self.headers[name]
         try:
-            status, upstream, stream = client.open(method, url, headers)
+            if body and body[0] is not None:
+                status, upstream, stream = client.open("POST", url, headers, body[0])
+            else:
+                status, upstream, stream = client.open(method, url, headers)
         except HttpError as e:
             log.info("proxy: %s", e)
             self.send_error(502, str(e))

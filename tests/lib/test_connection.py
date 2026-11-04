@@ -241,6 +241,31 @@ def test_proxy_forwards_ranges_through_mtls(mtls_server, pki, trust):
     assert headers["Authorization"] == "Bearer good"
 
 
+def test_proxy_posts_a_form_body(server):
+    http = client()
+    proxy = MediaProxy(lambda path: (http, server.url + path, {},
+                                     b"u=robin&t=secret"))
+    try:
+        url = proxy.url("/media?id=1")
+        request = urllib.request.Request(url, headers={"Range": "bytes=0-9"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            assert response.status == 206 and response.read() == MEDIA[:10]
+    finally:
+        proxy.stop()
+    method, path, headers = server.requests[-1]
+    assert (method, path) == ("POST", "/media?id=1")
+    assert server.bodies == [b"u=robin&t=secret"]
+    assert headers["Content-Type"] == "application/x-www-form-urlencoded"
+
+
+def test_strict_router_skips_local_without_networkmanager(server, ssids):
+    conn = Route(client(), "", server.url, ["Home"])
+    conn.strict_local = True
+    assert isinstance(resolve(conn), HttpError)
+    ssids["value"] = {"Home"}
+    assert resolve(conn) is None and conn.state == LOCAL
+
+
 def test_proxy_answers_502_when_forward_fails():
     def forward(path):
         raise RuntimeError("not signed in")

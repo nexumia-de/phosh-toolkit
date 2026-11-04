@@ -30,7 +30,13 @@ class Router(GObject.Object):
     401).
 
     `state` is "connecting", "local", "remote" or "offline"; `base_url`
-    the address in use; `error` the last HttpError when offline."""
+    the address in use; `error` the last HttpError when offline.
+
+    A server that can't tell its id without credentials sets
+    `strict_local = True`: the local address is then only used on a listed
+    home Wi-Fi (route.candidates)."""
+
+    strict_local = False
 
     __gsignals__ = {
         "state-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
@@ -68,7 +74,8 @@ class Router(GObject.Object):
 
     def candidates(self, ssids):
         remote, local, home = self.addresses()
-        return route.candidates(remote, local, home, ssids)
+        return route.candidates(remote, local, home, ssids,
+                                strict=self.strict_local)
 
     def resolve(self, done=None):
         """Find the address to use; done(error) on the main loop."""

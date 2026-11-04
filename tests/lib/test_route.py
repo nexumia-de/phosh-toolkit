@@ -54,3 +54,13 @@ def test_single_address():
 
 def test_local_timeout_is_short():
     assert route.TIMEOUT[LOCAL] < route.TIMEOUT[REMOTE]
+
+
+def test_strict_uses_local_only_on_a_reported_home_network():
+    assert candidates(REMOTE_URL, LOCAL_URL, ["Home"], {"Home"}, strict=True) == [
+        (LOCAL, LOCAL_URL), (REMOTE, REMOTE_URL)]
+    assert candidates(REMOTE_URL, LOCAL_URL, [], {"Home"}, strict=True) == [
+        (REMOTE, REMOTE_URL)]
+    assert candidates(REMOTE_URL, LOCAL_URL, ["Home"], None, strict=True) == [
+        (REMOTE, REMOTE_URL)]
+    assert candidates("", LOCAL_URL, ["Home"], {"Café"}, strict=True) == []

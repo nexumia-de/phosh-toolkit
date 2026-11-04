@@ -27,6 +27,7 @@ class FakeServer:
     def __init__(self, server_id="server-a", context=None):
         self.server_id = server_id
         self.requests = []
+        self.bodies = []      # of POST requests
         owner = self
 
         class Handler(_Handler):
@@ -72,6 +73,11 @@ class _Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def do_HEAD(self):
+        self.do_GET()
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        self.server_owner.bodies.append(self.rfile.read(length))
         self.do_GET()
 
     def do_GET(self):

@@ -38,17 +38,24 @@ def normalize(text):
     return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
 
-def candidates(remote_url, local_url, home_networks, ssids):
+def candidates(remote_url, local_url, home_networks, ssids, strict=False):
     """Ordered (kind, url) pairs to try.
 
     `ssids` is the set of Wi-Fi networks the phone is connected to, or None
     when NetworkManager can't be asked. The local address is only tried on
     a listed home network, so the access token is never sent to a strange
     LAN; without a list (or without NetworkManager) it is tried first
-    everywhere, and the server id check in router.Router guards it."""
+    everywhere, and the server id check in router.Router guards it.
+
+    `strict` is for servers that can't prove who they are before the
+    credentials are sent (no server id): then the local address is tried
+    only on a listed home network that NetworkManager reports."""
     order = []
     if local_url:
-        if not home_networks or ssids is None:
+        if strict:
+            if ssids is not None and set(ssids) & set(home_networks or ()):
+                order.append((LOCAL, local_url))
+        elif not home_networks or ssids is None:
             order.append((LOCAL, local_url))
         elif set(ssids) & set(home_networks):
             order.append((LOCAL, local_url))
