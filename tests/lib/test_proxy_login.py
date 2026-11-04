@@ -179,3 +179,78 @@ def test_login_page_signs_in_through_mutual_tls(mtls_proxied, pki, trust):
     paths = [p for _, p, _ in mtls_proxied.requests]
     assert "/auth/login" in paths and paths.count("/info") >= 2
     assert http.cookies == {}       # the app's client is left alone
+
+
+# --- HTTP Basic auth at the proxy (Pangolin's header authentication) ---
+
+
+@pytest.fixture
+def basic():
+    s = FakeServer()
+    s.basic = "phone:s3cret"
+    s.start()
+    yield s
+    s.stop()
+
+
+def test_basic_challenge_is_a_basic_proxy_login(basic, no_wifi):
+    conn = Route(Client(UA), basic.url)
+    error = resolve(conn)
+    assert error.kind == PROXY_LOGIN and error.wants_basic
+    assert conn.proxy_error is error and conn.logins == [basic.url]
+    # No web page for it: the app points to its form instead.
+    shown = []
+    assert proxy_login.sign_in(None, conn, conn.http, None, None,
+                               on_basic=lambda: shown.append(1)) is None
+    assert shown == [1]
+
+
+def test_basic_credentials_go_only_to_their_origin(basic, server, no_wifi, keyring):
+    creds = proxy_login.ProxyCredentials(keyring)
+    assert creds.get(basic.url) == ("", "")
+    creds.set(basic.url + "/some/path", "phone", "s3cret")
+    assert creds.get(basic.url) == ("phone", "s3cret")
+    http = Client(UA)
+    http.proxy_auth = creds.headers()
+    conn = Route(http, basic.url)
+    assert resolve(conn) is None
+    assert basic.requests[-1][2]["Authorization"].startswith("Basic ")
+    info(http, server.url)
+    assert "Authorization" not in server.requests[-1][2]
+    creds.set(basic.url, "", "")
+    assert creds.load() == {} and keyring.lookup(proxy_login.CREDENTIALS) is None
+
+
+def test_app_authorization_header_wins(basic):
+    http = Client(UA)
+    http.proxy_auth = {origin(basic.url): "Basic xyz"}
+    with pytest.raises(HttpError) as e:
+        http.request("GET", basic.url + "/private", {"Authorization": "Bearer good"})
+    # The proxy got the app's header, not the Basic one, and refused.
+    assert e.value.kind == AUTH and e.value.wants_basic
+    assert basic.requests[-1][2]["Authorization"] == "Bearer good"
+
+
+def test_wrong_basic_credentials_are_not_a_server_sign_out(basic, no_wifi):
+    http = Client(UA)
+    http.proxy_auth = {origin(basic.url): proxy_login.basic_auth("phone", "s3cret")}
+    conn = Route(http, basic.url)
+    assert resolve(conn) is None
+    http.proxy_auth = {origin(basic.url): proxy_login.basic_auth("phone", "old")}
+    done = []
+    conn.call(lambda: http.request("GET", conn.base_url + "/info"),
+              lambda r, e: done.append(e))
+    run_until(lambda: done)
+    assert done[0].kind == PROXY_LOGIN and done[0].wants_basic
+    assert not conn.signed_out
+
+
+def test_media_proxy_sends_basic_auth(basic):
+    http = Client(UA)
+    http.proxy_auth = {origin(basic.url): proxy_login.basic_auth("phone", "s3cret")}
+    proxy = MediaProxy(lambda path: (http, basic.url + path, {}))
+    try:
+        with urllib.request.urlopen(proxy.url("/media"), timeout=10) as response:
+            assert response.status == 200
+    finally:
+        proxy.stop()

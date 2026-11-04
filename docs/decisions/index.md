@@ -15,3 +15,4 @@
 * [OKF for documentation](okf-docs.md) - Knowledge is kept as an Open Knowledge Format bundle in docs/.
 * [AGENTS.md for vendor neutrality](agents-md.md) - Agent rules live in AGENTS.md; CLAUDE.md only imports it.
 * [One accent colour per app](app-accent-colours.md) - Each app has its own accent; light/dark follow the system unless chosen in the app's preferences.
+* [HTTP Basic auth at the proxy](proxy-basic-auth.md) - Proxy user name and password kept in the keyring so the proxy login does not return; only for servers that leave the Authorization header alone; the security trade-off.
