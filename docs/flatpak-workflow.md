@@ -57,7 +57,19 @@ explicitly.
 The same applies to `elfutils`: flatpak-builder strips every ELF file a
 module installs with `eu-strip`. Without it, the first module with
 compiled code fails with `Failed to execute child process "eu-strip"`.
-Apps that only install scripts (like the demo) never hit this. `setup.sh`
+Apps that only install scripts (like the demo) never hit this.
+
+`appstreamcli compose` also downloads every screenshot URL of the
+metainfo and drops each one it cannot fetch, without an error. A tag
+run attaches its screenshots to the GitHub Release only after the
+build, so every release up to toolkit v0.3.0 shipped without
+screenshots in the repository's AppStream data and GNOME Software
+showed none (found 2026-11-04 in `https://flatpak.nexumia.de/repo/`:
+Cirro 0.3.0's metainfo lists four, the published data none). The
+reusable workflow therefore puts a wrapper `appstreamcli` first in
+`PATH` for the build that adds `--no-net` to `compose`; the URLs stay
+as written, and the Screenshots step checks that every listed shot is
+taken. `setup.sh`
 and the reusable workflow install it explicitly.
 
 # Bundle

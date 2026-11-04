@@ -310,6 +310,24 @@ jobs:
         env:
           MANIFEST: ${{ steps.manifest.outputs.path }}
         run: |
+          # flatpak-builder runs "appstreamcli compose", which downloads
+          # every screenshot URL of the metainfo and silently drops the
+          # ones that fail. A tag run attaches its screenshots to the
+          # release only after this build, so all of them were dropped
+          # and no store showed any. --no-net keeps the URLs as written;
+          # the Screenshots step checks that every listed one is taken.
+          bin=$RUNNER_TEMP/appstream-no-net
+          mkdir -p "$bin"
+          cat > "$bin/appstreamcli" <<'EOF'
+          #!/bin/sh
+          if [ "$1" = compose ]; then
+            shift
+            exec /usr/bin/appstreamcli compose --no-net "$@"
+          fi
+          exec /usr/bin/appstreamcli "$@"
+          EOF
+          chmod +x "$bin/appstreamcli"
+          export PATH=$bin:$PATH
           flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
             --ccache --force-clean --arch=${{ matrix.arch }} \
             --bundle-sources --repo=repo build-dir "$MANIFEST"
