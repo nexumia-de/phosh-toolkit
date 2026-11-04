@@ -32,6 +32,12 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 - No horizontal scrolling at 360 px width. Minimum window size 360×294.
 - Touch first: no hover-only affordances, large targets, forms scroll
   vertically for the on-screen keyboard.
+- **Swipe back everywhere:** every page opened from another page is
+  pushed onto an `AdwNavigationView` (or is the content of an
+  `AdwNavigationSplitView`), so a left-to-right swipe closes it with
+  libadwaita's animation. No `GtkStack` page switching with an own back
+  button; keep `can-pop` true. Details and traps: rule 9 of the
+  guideline below.
 - Full guideline: [../phosh-toolkit/docs/adaptive-libadwaita.md](docs/adaptive-libadwaita.md).
 - Check every UI change at 360×720 (and once at a desktop size) and look
   at the result before committing:
