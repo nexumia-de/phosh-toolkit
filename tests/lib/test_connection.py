@@ -276,3 +276,104 @@ def test_proxy_answers_502_when_forward_fails():
         assert e.value.code == 502
     finally:
         proxy.stop()
+
+
+def test_network_change_during_a_search_searches_again(server, ssids):
+    """Wi-Fi drops while a search still sees it: the change that comes in
+    meanwhile is not lost, and the remote address wins."""
+    import threading
+    local = FakeServer("server-a").start()
+    try:
+        gate = threading.Event()
+        conn = Route(client(), server.url, local.url, ["Home"])
+        conn.strict_local = True
+        plain_probe = conn.probe
+
+        def slow_probe(url, timeout):
+            gate.wait(5)           # the network changes during this probe
+            return plain_probe(url, timeout)
+        conn.probe = slow_probe
+        ssids["value"] = {"Home"}
+        done = []
+        conn.resolve(lambda e: done.append(e))
+        # Wi-Fi gone, the watcher asks again while the first search runs.
+        ssids["value"] = set()
+        conn.resolve()
+        gate.set()
+        run_until(lambda: done)
+        assert done[0] is None
+        assert conn.state == REMOTE and conn.base_url == server.url
+    finally:
+        local.stop()
+
+
+def test_watcher_listens_to_networkmanager():
+    from gi.repository import GLib
+
+    from phosh_toolkit import network
+
+    class Bus:
+        def signal_subscribe(self, *args):
+            self.args = args
+            return 7
+
+        def signal_unsubscribe(self, sid):
+            self.unsubscribed = sid
+    bus = Bus()
+    watcher = network.Watcher(bus=bus)
+    assert bus.args[:4] == (network.NM, network.PROPS, "PropertiesChanged",
+                            network.NM_PATH)
+    changes = []
+    watcher.connect("changed", lambda w: changes.append(1))
+    # A property that doesn't touch the route: nothing.
+    watcher._on_nm(bus, network.NM, network.NM_PATH, network.PROPS,
+                   "PropertiesChanged", GLib.Variant("(sa{sv}as)", (
+                       network.NM, {"WirelessEnabled": GLib.Variant("b", True)}, [])))
+    watcher._on_nm(bus, network.NM, network.NM_PATH, network.PROPS,
+                   "PropertiesChanged", GLib.Variant("(sa{sv}as)", (
+                       network.NM, {"PrimaryConnection": GLib.Variant("o", "/x")}, [])))
+    run_until(lambda: changes, 5)
+    assert changes == [1]
+    watcher.close()
+    assert bus.unsubscribed == 7
+
+
+def test_proxy_follows_the_route(server):
+    """A changed route cuts the running upstream read, so the player
+    reconnects through the new address."""
+    import http.client
+    import time
+    from urllib.parse import urlsplit
+    other = FakeServer("server-b").start()
+    try:
+        current = {"url": server.url}
+        proxy = MediaProxy(lambda path: (client(), current["url"] + path, {}))
+        conn = Route(client(), server.url, "")
+        conn.base_url = server.url
+        proxy.follow(conn)
+        parts = urlsplit(proxy.url("/media"))
+        c = http.client.HTTPConnection(parts.hostname, parts.port, timeout=10)
+        c.request("GET", parts.path)
+        response = c.getresponse()
+        response.read(1000)
+        deadline = time.time() + 5
+        while not proxy._active and time.time() < deadline:
+            time.sleep(0.05)
+        assert proxy._active
+        # The route moves to the other server.
+        current["url"] = conn.base_url = other.url
+        conn.emit("state-changed")
+        rest = b""
+        try:
+            while True:
+                chunk = response.read(65536)
+                if not chunk:
+                    break
+                rest += chunk
+        except http.client.IncompleteRead as e:
+            rest += e.partial
+        assert len(rest) + 1000 < int(response.getheader("Content-Length"))
+        c.close()
+        proxy.stop()
+    finally:
+        other.stop()

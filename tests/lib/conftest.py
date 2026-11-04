@@ -41,6 +41,7 @@ class FakeServer:
         self.requests = []
         self.login = False
         self.basic = None
+        self.media_rate = 0     # bytes per second for /media; 0 is fast
         self.bodies = []      # of POST requests
         owner = self
 
@@ -88,6 +89,25 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
         self.do_GET()
+
+    def _send_slowly(self, status, body, extra, rate):
+        """Like a server across a slow link: `rate` bytes per second."""
+        import time
+        self.send_response(status)
+        self.send_header("Content-Type", "audio/flac")
+        self.send_header("Content-Length", str(len(body)))
+        for name, value in extra:
+            self.send_header(name, value)
+        self.end_headers()
+        if self.command == "HEAD":
+            return
+        step = max(1, rate // 10)
+        try:
+            for i in range(0, len(body), step):
+                self.wfile.write(body[i:i + step])
+                time.sleep(0.1)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
@@ -154,7 +174,11 @@ class _Handler(BaseHTTPRequestHandler):
                 end = int(last) if last else end
                 status = 206
                 extra.append(("Content-Range", f"bytes {start}-{end}/{len(MEDIA)}"))
-            self._send(status, MEDIA[start:end + 1], "audio/flac", extra)
+            rate = owner.media_rate
+            if rate:
+                self._send_slowly(status, MEDIA[start:end + 1], extra, rate)
+            else:
+                self._send(status, MEDIA[start:end + 1], "audio/flac", extra)
         else:
             self._send(404, b"{}")
 

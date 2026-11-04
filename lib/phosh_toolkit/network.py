@@ -46,14 +46,43 @@ def current_ssids(bus=None):
 
 
 class Watcher(GObject.Object):
-    """Emits "changed" (debounced) when the network may have changed."""
+    """Emits "changed" (debounced) when the network may have changed.
+
+    Two sources: GLib's network monitor, and NetworkManager's own
+    PropertiesChanged on the system bus (active connections, primary
+    connection, state). In the Flatpak the monitor goes through the
+    network portal, which may not report a switch from Wi-Fi to mobile
+    data while the network stays "available"; NetworkManager does."""
     __gsignals__ = {"changed": (GObject.SignalFlags.RUN_FIRST, None, ())}
 
-    def __init__(self):
+    # NetworkManager properties that mean "the route may be different".
+    NM_PROPERTIES = ("ActiveConnections", "PrimaryConnection", "State",
+                     "Connectivity")
+
+    def __init__(self, bus=None):
         super().__init__()
         self._timeout = 0
         self._monitor = Gio.NetworkMonitor.get_default()
         self._monitor.connect("network-changed", self._on_changed)
+        self._bus = None
+        self._subscription = 0
+        try:
+            self._bus = bus or Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            self._subscription = self._bus.signal_subscribe(
+                NM, PROPS, "PropertiesChanged", NM_PATH, None,
+                Gio.DBusSignalFlags.NONE, self._on_nm, None)
+        except GLib.Error as e:
+            log.info("NetworkManager signals not available: %s", e.message)
+
+    def close(self):
+        if self._subscription and self._bus is not None:
+            self._bus.signal_unsubscribe(self._subscription)
+            self._subscription = 0
+
+    def _on_nm(self, bus, sender, path, interface, signal, parameters, *_):
+        iface, changed, _invalidated = parameters.unpack()
+        if iface == NM and any(name in changed for name in self.NM_PROPERTIES):
+            self._on_changed()
 
     @property
     def available(self):
