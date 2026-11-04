@@ -81,3 +81,38 @@ def test_undecodable_data_is_an_error(server):
         media.stop()
     finally:
         proxy.stop()
+
+
+def test_playback_moves_to_the_new_route(server, monkeypatch):
+    """The route changes mid-song (Wi-Fi gone): reroute() cuts the stream,
+    GStreamer's HTTP source reconnects with a Range and the song goes on
+    from the other address."""
+    import conftest
+    from conftest import FakeServer
+    monkeypatch.setattr(conftest, "MEDIA", tone(seconds=20.0))
+    # Served a little faster than it plays (16 kB/s), so GStreamer is
+    # still reading when the route changes.
+    server.media_rate = 24000
+    other = FakeServer("server-b").start()
+    http = Client("Test/1.0")
+    current = {"url": server.url}
+    proxy = MediaProxy(lambda path: (http, current["url"] + path, {}))
+    try:
+        media = make(proxy.url("/media"))
+        media.play()
+        run_until(lambda: media.get_timestamp() > 1_000_000 or media.get_error(), 15)
+        assert not media.get_error()
+        current["url"] = other.url
+        proxy.reroute()
+        run_until(lambda: any(p == "/media" for m, p, h in other.requests)
+                  or media.get_error(), 15)
+        before = media.get_timestamp()
+        run_until(lambda: media.get_timestamp() > before + 1_000_000
+                  or media.get_error(), 15)
+        assert not media.get_error() and media.get_playing()
+        ranges = [h.get("Range") for m, p, h in other.requests if p == "/media"]
+        assert ranges and ranges[0] and not ranges[0].startswith("bytes=0-")
+        media.stop()
+    finally:
+        proxy.stop()
+        other.stop()

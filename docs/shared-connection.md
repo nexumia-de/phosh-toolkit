@@ -43,7 +43,7 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`, `open()` streams an answer (also for a `POST` body); errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
 | `tls` | no | `load(data, password)` for PKCS #12 or PEM with key, `describe(cert)` |
 | `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
-| `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s) |
+| `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s, from GLib's network monitor and NetworkManager's signals) |
 | `router` | no | `Router`: base class of an app's connection (state, `base_url`, `resolve()`, `call()`); `probe_addresses()` for setup |
 | `settings` | no | `app_dir(kind, app)` for the XDG directories, `JsonStore(path, cls, version)` for the account file |
 | `keyring` | no | `Keyring(schema, labels, memory_env)`: libsecret, memory fallback |
@@ -76,10 +76,32 @@ list of home Wi-Fi names (SSIDs). `route.candidates()` orders them:
 timeout)` (no credentials; 3 s for the local address, 15 s for the
 remote one). The first one that answers **with the server id stored at
 sign-in** is used; another server at the same LAN address never gets
-the credentials. The route is chosen again when `Gio.NetworkMonitor`
-reports a change, and once after a call that failed with a network
-error (`Router.call` retries through the new route). A `401` calls the
-app's `unauthorized()`.
+the credentials. The route is chosen again when the network changes,
+and once after a call that failed with a network error (`Router.call`
+retries through the new route). A `401` calls the app's
+`unauthorized()`.
+
+**Switching while the app runs** (the owner: "app running, Wi-Fi gone,
+it stays on the local address", 2026-11-04). Three gaps, closed:
+
+- `network.Watcher` listened only to `Gio.NetworkMonitor`. In the
+  Flatpak that is the network portal, which reports what the host's
+  monitor reports and may say nothing while the network stays
+  "available" (Wi-Fi to mobile data). The watcher now also subscribes
+  to NetworkManager's `PropertiesChanged` on its root object
+  (`ActiveConnections`, `PrimaryConnection`, `State`, `Connectivity`),
+  which the app may already talk to (`--system-talk-name`).
+- Leaving a Wi-Fi comes as several changes; the first search can still
+  see the home Wi-Fi (and reach the local address). A `resolve()` while
+  a search runs used to be dropped; now the router searches once more
+  when the first search ends, and the waiting callbacks get that
+  answer.
+- A song already streaming kept its connection to the old address until
+  a 30 s timeout. `MediaProxy.follow(router)` cuts the running upstream
+  reads when the router moves to another address (`reroute()`);
+  GStreamer's HTTP source then reconnects with a `Range` from where it
+  was and gets the new address from `forward()`. Tested with real
+  GStreamer (`tests/lib/test_media.py`).
 
 **Strict mode** (`Router.strict_local = True`, `route.candidates(…,
 strict=True)`) is for servers that can't say who they are before the
@@ -238,6 +260,9 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 - `Range` and `If-Range` pass through (seeking), `Accept-Encoding:
   identity` keeps lengths right; without a length the answer ends by
   closing.
+- `reroute()` cancels the running upstream reads; `follow(router)` does
+  that whenever the router's address changes. Apps call
+  `proxy.follow(connection)` once.
 
 `Media` plays the proxy URL with `playbin3`. `Gtk.MediaFile` can't be
 used in GTK 4.20 (GNOME 51): its GStreamer backend reads the URI through

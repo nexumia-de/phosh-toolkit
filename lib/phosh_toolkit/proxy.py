@@ -13,7 +13,7 @@ import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from gi.repository import GLib
+from gi.repository import Gio, GLib
 
 from phosh_toolkit.http import HttpError
 
@@ -37,6 +37,32 @@ class MediaProxy:
         self.forward = forward
         self.secret = secrets.token_urlsafe(24)
         self._server = None
+        self._lock = threading.Lock()
+        self._active = set()     # Gio.Cancellable of running upstream reads
+        self._router_url = None
+
+    def reroute(self):
+        """Cut the running upstream reads, e.g. after the route changed:
+        the player's HTTP source reconnects (with a Range from where it
+        was), and forward() then gives the new address."""
+        with self._lock:
+            active = list(self._active)
+        for cancellable in active:
+            cancellable.cancel()
+
+    def follow(self, router):
+        """reroute() whenever `router` (router.Router) switches to another
+        address, so playback moves from the local to the remote address
+        (and back) without waiting for a timeout."""
+        self._router_url = router.base_url
+
+        def changed(r):
+            if r.base_url and r.base_url != self._router_url:
+                if self._router_url:
+                    log.info("proxy: route changed, reconnecting streams")
+                    self.reroute()
+                self._router_url = r.base_url
+        router.connect("state-changed", changed)
 
     def start(self):
         if self._server:
@@ -118,18 +144,24 @@ class _Handler(BaseHTTPRequestHandler):
         if method == "HEAD":
             stream.close(None)
             return
+        cancellable = Gio.Cancellable()
+        with self.owner._lock:
+            self.owner._active.add(cancellable)
         try:
             while True:
-                data = stream.read_bytes(CHUNK, None).get_data()
+                data = stream.read_bytes(CHUNK, cancellable).get_data()
                 if not data:
                     break
                 self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError):
             pass  # the player seeked or stopped
         except GLib.Error as e:
+            # Also reroute(): closing makes the player reconnect.
             log.info("proxy: upstream: %s", e.message)
             self.close_connection = True
         finally:
+            with self.owner._lock:
+                self.owner._active.discard(cancellable)
             try:
                 stream.close(None)
             except GLib.Error:

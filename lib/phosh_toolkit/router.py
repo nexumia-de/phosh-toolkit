@@ -55,6 +55,9 @@ class Router(GObject.Object):
         self.base_url = ""
         self.error = None
         self._resolving = []         # callbacks waiting for resolve()
+        # resolve() was called again while a search was running: the
+        # network may have changed after that search read it.
+        self._again = False
         self.watcher = None
         if watch:
             self.watcher = network.Watcher()
@@ -88,6 +91,7 @@ class Router(GObject.Object):
         """Find the address to use; done(error) on the main loop."""
         self._resolving.append(done)
         if len(self._resolving) > 1:
+            self._again = True
             return
         self._set_state(CONNECTING)
         tasks.run(self._find, self._on_found)
@@ -115,6 +119,12 @@ class Router(GObject.Object):
         raise error
 
     def _on_found(self, result, error):
+        if self._again:
+            # Search once more with what the network looks like now; the
+            # waiting callbacks get that answer.
+            self._again = False
+            tasks.run(self._find, self._on_found)
+            return
         if error is None:
             kind, url, info = result
             self.base_url = url
