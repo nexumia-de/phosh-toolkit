@@ -177,6 +177,17 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
   `main` identical to upstream so upstream merges stay clean. Never commit
   Phosh changes to `main` of a fork.
 
+## Code structure
+
+- One job per file: if a file's purpose needs "and" to describe, split
+  it. A feature with several jobs is a folder module (Python package,
+  Rust `mod.rs` plus files), one file per job.
+- Follow the project's existing layout and file sizes; in forks follow
+  upstream's layout and put new code in new files.
+- Past about 300 lines, check a file for mixed jobs. Split before the
+  pull request, not later.
+- Details: [../phosh-toolkit/docs/code-structure.md](docs/code-structure.md).
+
 ## Shared code
 
 - No copy-paste between apps. Code stays in an app until a second app
@@ -271,7 +282,9 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 3. `../phosh-toolkit/scripts/screenshot.sh` at 360×720 if the UI changed,
    and the review checklist in
    [../phosh-toolkit/docs/design.md](docs/design.md).
-4. No code duplicated from another app or from phosh-toolkit.
+4. No code duplicated from another app or from phosh-toolkit; every new
+   or grown file has one job
+   ([code structure](docs/code-structure.md)).
 5. `reuse lint` passes; new modules are in `docs/dependencies.md`.
 6. The app's `docs/` updated in the same commit.
 7. A changelog fragment if users notice the change.

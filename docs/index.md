@@ -32,6 +32,7 @@ links between concepts. Change history is in [log.md](log.md).
 * [Licensing](licensing.md) - REUSE for own files, licence inventory, licence texts and source bundles for bundled code, data attribution.
 * [Branch protection](branch-protection.md) - Ruleset files that keep main behind pull requests with green CI, and how to import them.
 * [Toolkit usage](toolkit-usage.md) - How an app repository consumes this toolkit.
+* [Code structure](code-structure.md) - One job per file, folder modules for features with several jobs, the project's own layout, when to split.
 
 # Shared code
 
