@@ -144,6 +144,9 @@ is covered by [visual design](design.md).
       bar may stay on the desktop.
     - A menu button in a bottom bar opens upwards
       (`direction = GTK_ARROW_TYPE_UP`).
+    - Buttons in bottom bars: normal buttons, at least 44 px high
+      (`min-height` in the app's CSS); not `pill`, which crashed the
+      screenshot server ([screenshot testing](screenshot-testing.md)).
 11. **Touch targets and gestures.**
     - Targets at least 44 × 44 px (WCAG 2.5.5[^wcag-target]; Apple
       44 pt, Material 48 dp): whole rows activatable, standalone icon
