@@ -130,6 +130,31 @@ Found with Cirro on 2026-10-27, running the app from
   12. Avoid store shots of lists with repeated icons until GTK fixes
   this. Real devices use Wayland and are not affected.
 
+# Known limits: pill buttons and reveal animations (GNOME 51)
+
+Found with Pensum on 2026-11-05, reproduced locally with the app's
+Flatpak on `org.gnome.Platform//51` and the toolkit's script:
+
+- **broadwayd aborts** after `Gdk-WARNING: Duplicate call to
+  gdk_frame_timings_submitted() with different values`; the script then
+  reports "Unable to read from broadway server: eof".
+- **Triggers**, each found by switching one change off at a time:
+  two `pill` buttons in an `AdwToolbarView` bottom bar (3 of 6 runs
+  failed; 6 of 6 passed without the `pill` class), and hiding a
+  `GtkActionBar` with its reveal animation while a navigation page
+  slides in (2 of 2 failed).
+- **Workaround.** In bottom bars use normal buttons with a CSS
+  `min-height: 44px` (thumb reach, [adaptive UI](adaptive-libadwaita.md)
+  rule 11) instead of `pill`, and hide bars that change with the page
+  with `set_visible` instead of `set_revealed`. Pensum's task shot then
+  passed 6 of 6. Real devices use Wayland and are not known to be
+  affected.
+- **Width warnings first.** `Adwaita-WARNING: … exceeds … width:
+  requested 370 px, 360 px available` repeats on every frame when a
+  page is too wide for 360 px and also ended in a broadwayd crash; host
+  libadwaita 1.5 does not print it, the GNOME 51 runtime does. Let
+  labels in bars ellipsize.
+
 # Requirements
 
 `gtk4-broadwayd` (Ubuntu package `libgtk-4-bin`, installed by `setup.sh`)
