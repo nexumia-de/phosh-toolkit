@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-05
+* **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md): rule 9 adds one `AdwNavigationView` per window, never nested in a split view's content (Pensum's back swipe failed on the phone with that layout, owner 2026-11-05) and how to keep a sidebar on wide windows; new rule 10 *Thumb reach* (frequent actions and creating text fields in bottom bars, header bar for title/back/menu, destructive actions out of easy reach; Hoober, HIG adaptive, header bars, view switchers) and rule 11 *Touch targets and gestures* (44×44 px after WCAG 2.5.5, no hover, long-press alternatives, gestures reserved by the system, no autofocus); the verify rule is now 12. [Visual design](design.md): undo instead of confirmation (HIG dialogs and toasts), one suggested and one destructive button per view (HIG buttons), four new checklist items. `AGENTS.md` UI rules point to them. HIG pages read 2026-11-05; the HIG names no touch target size, so the size comes from WCAG, Apple and Material.
+
 ## 2026-11-04
 * **Update**: [Shared code](shared-connection.md#used-by): Pulsus (nexumia-de/pulsus, a viewer for Amazfish's data) uses `settings` and `style`.
 * **Fix**: [Flatpak workflow](flatpak-workflow.md): released apps had no screenshots in GNOME Software. flatpak-builder's `appstreamcli compose` drops screenshot URLs it cannot download, and a tag run uploads its screenshots only after the build; the Build step now runs compose with `--no-net`. Reproduced with `appstreamcli compose` 1.0.2 and a flatpak-builder 1.4.2 build.

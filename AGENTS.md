@@ -31,15 +31,25 @@ checkout `../phosh-toolkit/AGENTS.md` before working on an app.
 ## UI
 
 - Adaptive GTK4 + libadwaita UI: use `AdwBreakpoint` for layout changes
-  and `AdwNavigationSplitView` for sidebar/content layouts.
+  and `AdwNavigationSplitView` for sidebar/content layouts whose content
+  is a single page; with pages pushed on the content, one
+  `AdwNavigationView` plus a sidebar that moves (rule 9).
 - No horizontal scrolling at 360 px width. Minimum window size 360×294.
-- Touch first: no hover-only affordances, large targets, forms scroll
-  vertically for the on-screen keyboard.
+- Touch first: no hover-only affordances, targets of at least 44×44 px,
+  forms scroll vertically for the on-screen keyboard, no text field
+  focused when a page opens.
+- **Thumb reach:** the actions used most on a page (add, compose,
+  search, start/stop, mark done) go in a bottom bar; the header bar
+  keeps title, back and menu; destructive actions stay out of easy
+  reach. Rule 10 of the guideline below.
+- **Undo, not confirm:** a destructive action happens at once and shows
+  an `AdwToast` with Undo; ask first only when undo is impossible.
 - **Swipe back everywhere:** every page opened from another page is
   pushed onto an `AdwNavigationView` (or is the content of an
   `AdwNavigationSplitView`), so a left-to-right swipe closes it with
-  libadwaita's animation. No `GtkStack` page switching with an own back
-  button; keep `can-pop` true. Details and traps: rule 9 of the
+  libadwaita's animation. One navigation view per window, never one
+  nested in a split view's content. No `GtkStack` page switching with an
+  own back button; keep `can-pop` true. Details and traps: rule 9 of the
   guideline below.
 - Full guideline: [../phosh-toolkit/docs/adaptive-libadwaita.md](docs/adaptive-libadwaita.md).
 - Check every UI change at 360×720 (and once at a desktop size) and look
