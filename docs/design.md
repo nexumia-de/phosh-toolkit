@@ -3,8 +3,17 @@ type: Guideline
 title: Visual design
 description: How Phosh apps look: stock libadwaita styling, typography, colour, icons, text and feedback patterns, following the GNOME HIG.
 tags: [ui, design, libadwaita, hig, guideline]
-generated: { by: claude-code/2.1.317, at: 2026-11-03T23:45:00Z }
+generated: { by: claude-code/2.1.318, at: 2026-11-05T07:30:00Z }
 sources:
+  - id: hig-dialogs
+    resource: https://developer.gnome.org/hig/patterns/feedback/dialogs.html
+    title: GNOME HIG – Dialogs (read 2026-11-05)
+  - id: hig-toasts
+    resource: https://developer.gnome.org/hig/patterns/feedback/toasts.html
+    title: GNOME HIG – Toasts (read 2026-11-05)
+  - id: hig-buttons
+    resource: https://developer.gnome.org/hig/patterns/controls/buttons.html
+    title: GNOME HIG – Buttons (read 2026-11-05)
   - id: hig-styling
     resource: https://developer.gnome.org/hig/guidelines/ui-styling.html
     title: GNOME HIG – UI styling
@@ -117,6 +126,15 @@ Layout and responsiveness are covered by
      `AdwBanner`.
    - Loading: `AdwSpinner` (1.6+) or `AdwSpinnerPaintable` in an
      `AdwStatusPage`; no custom progress animations.
+   - Destructive actions (delete, archive, clear): do them at once and
+     show an `AdwToast` with an "Undo" button. The HIG prefers undo,
+     because people click through confirmation dialogs without reading
+     them.[^hig-dialogs][^hig-toasts] Ask first in an `AdwAlertDialog`
+     only when undo is impossible (an import that replaces everything,
+     sending something to a server).
+   - Buttons: at most one `suggested-action` and one `destructive-action`
+     per view, short labels, no more than two button widths in a
+     window.[^hig-buttons]
 7. **Text.** Short and neutral, US English, no "e.g."/"i.e.".[^hig-writing]
    Header capitalisation for titles, header bars, buttons and menu items
    ("Find and Replace"); sentence capitalisation for descriptions, row
@@ -167,6 +185,14 @@ Use this when reviewing a UI change, together with the 360×720 screenshot:
 - [ ] Every page opened from another page swipes back from left to right
       ([adaptive UI](adaptive-libadwaita.md), rule 9; checked on the
       phone).
+- [ ] On the phone, the page's most used actions are in a bottom bar and
+      the header bar holds only title, back and menu
+      ([adaptive UI](adaptive-libadwaita.md), rule 10).
+- [ ] Targets are at least 44×44 px; nothing needs hover; long-press
+      actions are also in a menu or behind a button (rule 11).
+- [ ] No text field takes the focus when a page opens (the on-screen
+      keyboard would cover the page).
+- [ ] Destructive actions offer Undo in a toast instead of asking first.
 - [ ] Every icon-only button has a tooltip and an accessible label.
 - [ ] Empty/error/offline states use `AdwStatusPage`, `AdwToast` or `AdwBanner`.
 - [ ] Capitalisation and Unicode as in rule 7.
@@ -175,6 +201,9 @@ Use this when reviewing a UI change, together with the 360×720 screenshot:
 - [ ] Looks right in dark style (`ADW_DEBUG_COLOR_SCHEME=prefer-dark`) and
       high contrast (`ADW_DEBUG_HIGH_CONTRAST=1`).[^adw-debug]
 
+[^hig-dialogs]: GNOME HIG – Dialogs
+[^hig-toasts]: GNOME HIG – Toasts
+[^hig-buttons]: GNOME HIG – Buttons
 [^hig-styling]: GNOME HIG – UI styling
 [^hig-writing]: GNOME HIG – Writing style
 [^hig-typography]: GNOME HIG – Typography

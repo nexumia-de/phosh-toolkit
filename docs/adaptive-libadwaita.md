@@ -3,7 +3,7 @@ type: Guideline
 title: Adaptive libadwaita UI
 description: Rules for GTK4/libadwaita UIs that work at 360×720 on Phosh and scale up to the desktop.
 tags: [ui, gtk4, libadwaita, adaptive, guideline]
-generated: { by: claude-code/2.1.317, at: 2026-11-04T00:30:00Z }
+generated: { by: claude-code/2.1.318, at: 2026-11-05T07:30:00Z }
 sources:
   - id: adw-adaptive
     resource: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/adaptive-layouts.html
@@ -20,6 +20,24 @@ sources:
   - id: adw-splitview-src
     resource: https://gitlab.gnome.org/GNOME/libadwaita/-/blob/main/src/adw-navigation-split-view.c
     title: libadwaita adw-navigation-split-view.c (collapsed child is a navigation-view)
+  - id: hig-adaptive
+    resource: https://developer.gnome.org/hig/guidelines/adaptive.html
+    title: GNOME HIG – Scaling & adaptiveness (read 2026-11-05)
+  - id: hig-pointer-touch
+    resource: https://developer.gnome.org/hig/guidelines/pointer-touch.html
+    title: GNOME HIG – Pointer and touch input (read 2026-11-05)
+  - id: hig-header-bars
+    resource: https://developer.gnome.org/hig/patterns/containers/header-bars.html
+    title: GNOME HIG – Header bars (read 2026-11-05)
+  - id: hig-view-switchers
+    resource: https://developer.gnome.org/hig/patterns/nav/view-switchers.html
+    title: GNOME HIG – View switchers (read 2026-11-05)
+  - id: hoober
+    resource: https://www.uxmatters.com/mt/archives/2013/11/design-for-fingers-and-thumbs-instead-of-touch.php
+    title: Steven Hoober, Design for Fingers and Thumbs Instead of Touch (UXmatters, 2013)
+  - id: wcag-target
+    resource: https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html
+    title: WCAG 2.2 – 2.5.5 Target Size (Enhanced), 44 × 44 CSS px
   - id: as-relations
     resource: https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#tag-relations
     title: AppStream relations (requires, recommends, supports)
@@ -83,6 +101,16 @@ is covered by [visual design](design.md).
      `show-content = false`, or the user lands on a page with nothing
      to swipe back to (Cirro's places list, nexumia-de/cirro#50). Push
      such a view as its own page, or make it the content.
+   - **One `AdwNavigationView` per window.** Never put a second
+     navigation view inside an `AdwNavigationSplitView`'s content (or
+     any other page): in Pensum the back swipe stopped working on the
+     phone with that layout (owner, 2026-11-05). For a sidebar on wide
+     windows and drill-down pages, keep one navigation view and move
+     the sidebar: below the breakpoint the lists are its first page,
+     above it the same widget goes into an `AdwOverlaySplitView`'s
+     sidebar (`AdwBreakpoint` `apply`/`unapply`; Pensum's `window.py`).
+     An `AdwNavigationSplitView` is fine when the content is a single
+     page with nothing pushed on it.
    - **Keep `can-pop` true.** `AdwNavigationPage:can-pop = false`
      disables the gesture and the back button[^adw-navview-src]; use it
      only where leaving would lose work, and ask in an
@@ -95,7 +123,42 @@ is covered by [visual design](design.md).
    - **Verify** on the phone (label the issue `on device`): every pushed
      page swipes back, the animation follows the finger, and letting go
      early snaps back. Screenshots can't show gestures.
-10. **Verify** every UI change with `scripts/screenshot.sh` at 360×720 and
+10. **Thumb reach: frequent actions at the bottom.** On a phone held in
+    one hand the thumb reaches the lower part of the screen easily and
+    the top corners hardly at all[^hoober]; the HIG asks to start from
+    the most constrained device and lets breakpoints move controls into
+    a toolbar shown only at narrow widths.[^hig-adaptive]
+    - Put the actions used most on a page (add, compose, search, start
+      or stop, mark done, play controls) in a bottom bar of its
+      `AdwToolbarView` (`add_bottom_bar`, a `GtkActionBar` or an
+      `AdwClamp` with a box). Text fields that create something (add a
+      task, write a message) go there too: they sit right above the
+      on-screen keyboard.
+    - The header bar keeps the title, the back button and the main or
+      page menu, and few other controls.[^hig-header-bars] Rarely used
+      and destructive actions (delete, archive) belong in menus or at
+      the end of the page, not within easy reach.
+    - View switchers move to the bottom (`AdwViewSwitcherBar`) when the
+      window is narrow; 3–5 views.[^hig-view-switchers]
+    - At most about four targets in a bottom bar at 360 px; the same
+      bar may stay on the desktop.
+    - A menu button in a bottom bar opens upwards
+      (`direction = GTK_ARROW_TYPE_UP`).
+11. **Touch targets and gestures.**
+    - Targets at least 44 × 44 px (WCAG 2.5.5[^wcag-target]; Apple
+      44 pt, Material 48 dp): whole rows activatable, standalone icon
+      buttons not smaller than libadwaita's default button, about 6 px
+      between neighbouring targets.
+    - Hover never reveals actions or essential information; every
+      context-menu or long-press action is also reachable another way
+      (a visible button, a menu, a keyboard shortcut).[^hig-pointer-touch]
+    - Apps may use one- and two-finger gestures and drags from the left
+      and right edges; three- and four-finger gestures and drags from
+      the top and bottom edges belong to the system.[^hig-pointer-touch]
+    - Don't focus a text field on start or when a page opens unless
+      typing is the page's only purpose (a search page): on the phone it
+      opens the on-screen keyboard over the content.
+12. **Verify** every UI change with `scripts/screenshot.sh` at 360×720 and
    at a desktop size (see [screenshot testing](screenshot-testing.md)).
 
 # libadwaita versions
@@ -178,4 +241,10 @@ Adw.Breakpoint {
 [^adw-migrate]: libadwaita migrating to breakpoints
 [^adw-navview-src]: libadwaita adw-navigation-view.c
 [^adw-splitview-src]: libadwaita adw-navigation-split-view.c
+[^hig-adaptive]: GNOME HIG – Scaling & adaptiveness
+[^hig-pointer-touch]: GNOME HIG – Pointer and touch input
+[^hig-header-bars]: GNOME HIG – Header bars
+[^hig-view-switchers]: GNOME HIG – View switchers
+[^hoober]: Steven Hoober, Design for Fingers and Thumbs Instead of Touch
+[^wcag-target]: WCAG 2.2 – 2.5.5 Target Size (Enhanced)
 [^as-relations]: AppStream relations (requires, recommends, supports)
