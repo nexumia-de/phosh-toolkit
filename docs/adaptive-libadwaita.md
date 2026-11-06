@@ -101,16 +101,24 @@ is covered by [visual design](design.md).
      `show-content = false`, or the user lands on a page with nothing
      to swipe back to (Cirro's places list, nexumia-de/cirro#50). Push
      such a view as its own page, or make it the content.
-   - **One `AdwNavigationView` per window.** Never put a second
-     navigation view inside an `AdwNavigationSplitView`'s content (or
-     any other page): in Pensum the back swipe stopped working on the
-     phone with that layout (owner, 2026-11-05). For a sidebar on wide
-     windows and drill-down pages, keep one navigation view and move
-     the sidebar: below the breakpoint the lists are its first page,
-     above it the same widget goes into an `AdwOverlaySplitView`'s
-     sidebar (`AdwBreakpoint` `apply`/`unapply`; Pensum's `window.py`).
-     An `AdwNavigationSplitView` is fine when the content is a single
-     page with nothing pushed on it.
+   - **Sidebar plus drill-down pages: Ephyra's layout.** One
+     `AdwNavigationView` per window. Its first page holds an
+     `AdwNavigationSplitView` (sidebar page and content page), collapsed
+     by an `AdwBreakpoint` below 600 sp; choosing an entry in the
+     sidebar sets the content and `show-content = true`. Collapsed, the
+     content lies above the sidebar, so a swipe goes back to it. Every
+     page opened from the content (details, a task, search) is pushed
+     on the outer navigation view (Ephyra's `window.py` and
+     `browse.py`; Pensum the same way). Nauta has no sidebar: tabs
+     (`AdwViewStack` with a view switcher) on the first page, everything
+     else pushed on top. The owner uses Ephyra and Nauta on the phone as
+     the reference for the back swipe.
+   - **What did not work:** a second navigation view inside the split
+     view's content (Pensum 0.1.0: no back swipe on the phone, owner
+     2026-11-05), and moving the sidebar widget by hand between the
+     navigation view's first page and an `AdwOverlaySplitView` (Pensum
+     until 2026-11-06: the swipe back to the lists was missing on the
+     phone, owner).
    - **Keep `can-pop` true.** `AdwNavigationPage:can-pop = false`
      disables the gesture and the back button[^adw-navview-src]; use it
      only where leaving would lose work, and ask in an
@@ -122,7 +130,12 @@ is covered by [visual design](design.md).
      app's `docs/`.
    - **Verify** on the phone (label the issue `on device`): every pushed
      page swipes back, the animation follows the finger, and letting go
-     early snaps back. Screenshots can't show gestures.
+     early snaps back. Screenshots can't show gestures, and Broadway
+     passes no touch events to GTK. Real touch works in a headless
+     Mutter (`mutter --headless --wayland --virtual-monitor 360x720`
+     with PipeWire) through its remote-desktop D-Bus API
+     (`NotifyTouchDown`/`Motion`/`Up`); the seat offers touch only from
+     the first touch on, so tap once before the swipe (Pensum, 2026-11-06).
 10. **Thumb reach: frequent actions at the bottom.** On a phone held in
     one hand the thumb reaches the lower part of the screen easily and
     the top corners hardly at all[^hoober]; the HIG asks to start from
