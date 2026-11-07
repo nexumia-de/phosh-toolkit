@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-07
+* **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md), rule 9: forward swipe from a collapsed split view's sidebar back to its content through `get-next-page` on the split view's inner `AdwNavigationView`, connected again on each collapse (Cirro, nexumia-de/cirro#50; keyboard path checked under Xvfb).
+
 ## 2026-11-06
 * **Fix**: [Adaptive libadwaita UI](adaptive-libadwaita.md) rule 9 recommended Pensum's hand-made layout (the lists moved between the navigation view's first page and an `AdwOverlaySplitView`); the owner found the swipe from a list back to the lists missing on the phone, unlike Ephyra and Nauta. The rule now names Ephyra's layout (one navigation view, its first page holds a collapsible `AdwNavigationSplitView`, other pages pushed on top) and lists both layouts that failed. The verify rule says how to test real touch: Broadway passes no touch events; a headless Mutter with PipeWire takes touch through its remote-desktop D-Bus API after one warm-up tap (found while fixing Pensum).
 
