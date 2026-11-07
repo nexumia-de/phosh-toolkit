@@ -119,6 +119,18 @@ is covered by [visual design](design.md).
      navigation view's first page and an `AdwOverlaySplitView` (Pensum
      until 2026-11-06: the swipe back to the lists was missing on the
      phone, owner).
+   - **Forward swipe back to the content.** When the sidebar lies below
+     the content (opened by the content's back button or swipe), a
+     right-to-left swipe can bring the content back. The split view has
+     no forward swipe of its own, but `AdwNavigationView` has one
+     through its `get-next-page` signal (also Alt+→ and the forward
+     mouse button). Collapsed, the split view's only child is such a
+     navigation view, and libadwaita makes a new one at each collapse.
+     So connect `get-next-page` on `split.get_first_child()` on every
+     `notify::collapsed`, and return `split.get_content()` while the
+     sidebar is the visible page (Cirro's `forward_swipe.py`,
+     nexumia-de/cirro#50, 2026-11-07). Returning the page from Python
+     is safe: the signal's transfer-full return keeps its own reference.
    - **Keep `can-pop` true.** `AdwNavigationPage:can-pop = false`
      disables the gesture and the back button[^adw-navview-src]; use it
      only where leaving would lose work, and ask in an
