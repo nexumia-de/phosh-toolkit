@@ -22,8 +22,10 @@ or require duplicated, drifting copies.
   read.
 - `CLAUDE.md` contains only `@AGENTS.md`, which Claude Code resolves as
   an import.
-- App repositories start their `AGENTS.md` with
-  `@../phosh-toolkit/AGENTS.md` (see [toolkit usage](../toolkit-usage.md)).
+- Repositories start their `AGENTS.md` with
+  `@../phosh-toolkit/agents/core.md`, GTK apps also with
+  `@../phosh-toolkit/agents/gtk-app.md` (see [toolkit usage](../toolkit-usage.md),
+  [lean agent rules](lean-agent-rules.md)).
 - `setup.sh` and the scripts make no assumptions about a particular
   agent or cloud environment.
 
