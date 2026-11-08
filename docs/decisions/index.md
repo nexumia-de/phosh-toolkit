@@ -14,6 +14,7 @@
 * [Support platforms](support-platforms.md) - Liberapay now, Open Collective once hosted; one support link per app, no prompts in the main UI.
 * [OKF for documentation](okf-docs.md) - Knowledge is kept as an Open Knowledge Format bundle in docs/.
 * [AGENTS.md for vendor neutrality](agents-md.md) - Agent rules live in AGENTS.md; CLAUDE.md only imports it.
+* [Lean agent rules](lean-agent-rules.md) - Shared rules split into core and GTK-app files, kept short, with a token budget; based on measured cost of context files.
 * [One accent colour per app](app-accent-colours.md) - Each app has its own accent; light/dark follow the system unless chosen in the app's preferences.
 * [HTTP Basic auth at the proxy](proxy-basic-auth.md) - Proxy user name and password kept in the keyring so the proxy login does not return; only for servers that leave the Authorization header alone; the security trade-off.
 * [Code names and visible names](app-names.md) - Repository and app id keep a code name; users see a descriptive name; the agent suggests names, the owner chooses.

@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-08
+* **Update**: Agent rules split at the owner's request to use fewer tokens: `agents/core.md` for every repository (new section "Token budget"; CI watched by subscribing, not polling) and `agents/gtk-app.md` for GTK apps; `AGENTS.md` imports both. New decision [lean agent rules](decisions/lean-agent-rules.md), based on Gloaguen et al. 2026 (context files raise cost by over 20%). [Toolkit usage](toolkit-usage.md), README and the [AGENTS.md decision](decisions/agents-md.md) show the new imports.
+
 ## 2026-11-07
 * **Update**: [Adaptive libadwaita UI](adaptive-libadwaita.md), rule 9: forward swipe from a collapsed split view's sidebar back to its content through `get-next-page` on the split view's inner `AdwNavigationView`, connected again on each collapse (Cirro, nexumia-de/cirro#50; keyboard path checked under Xvfb).
 

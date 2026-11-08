@@ -32,14 +32,16 @@ bash phosh-toolkit/setup.sh
 ```
 
 **2. Agent rules.** In the app repository, `CLAUDE.md` contains only
-`@AGENTS.md`, and `AGENTS.md` starts with the toolkit import:
+`@AGENTS.md`, and `AGENTS.md` starts with the toolkit imports
+(repositories that are not GTK apps import only `agents/core.md`):
 
 ```markdown
-@../phosh-toolkit/AGENTS.md
+@../phosh-toolkit/agents/core.md
+@../phosh-toolkit/agents/gtk-app.md
 
 # My App
 
-App-specific rules. The shared rules in ../phosh-toolkit/AGENTS.md apply as well.
+App-specific rules only: what agents would get wrong without them.
 ```
 
 **3. Flatpak CI.** `.github/workflows/flatpak.yml` in the app repository:

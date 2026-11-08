@@ -16,7 +16,7 @@ sources:
 # Goal
 
 `main` changes only through pull requests whose CI is green. Agents
-open those pull requests after each task (see `AGENTS.md`, "After the
+open those pull requests after each task (see `agents/core.md`, "After the
 task").
 
 # The ruleset file

@@ -44,16 +44,17 @@ installs only the validation tools (see [host setup](host-setup.md)).
 Each app repository has:
 
 - `CLAUDE.md` containing only `@AGENTS.md`.
-- `AGENTS.md` starting with the toolkit import, followed by app-specific
-  rules:
+- `AGENTS.md` starting with the toolkit imports, followed by app-specific
+  rules (repositories that are not GTK apps import only `agents/core.md`):
 
   ```markdown
-  @../phosh-toolkit/AGENTS.md
+  @../phosh-toolkit/agents/core.md
+  @../phosh-toolkit/agents/gtk-app.md
 
   # My App
 
-  App-specific rules go here. The shared rules in
-  ../phosh-toolkit/AGENTS.md apply as well.
+  App-specific rules only: what agents would get wrong without them
+  ([lean agent rules](decisions/lean-agent-rules.md)).
   ```
 
 Claude Code resolves the `@` import recursively; other agents read the
