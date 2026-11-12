@@ -64,6 +64,26 @@ def test_image_cache_keys_from_the_server_stay_in_the_cache(tmp_path):
     assert all(p.parent == tmp_path / "cache" for p in files)
 
 
+def test_image_cache_removes_old_files_once(tmp_path):
+    cache_dir = tmp_path / "cache"
+    (cache_dir / "old-subdir").mkdir(parents=True)
+    (cache_dir / "old-subdir" / "inner.png").write_bytes(PNG)
+    (cache_dir / "Primary-abc-360.png").write_bytes(PNG)
+    (cache_dir / ("A" * 64)).write_bytes(PNG)        # not lower-case hex
+    keep = cache_dir / file_name("kept.png")
+    keep.write_bytes(PNG)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "file.png").write_bytes(PNG)
+    (cache_dir / "link-to-outside").symlink_to(outside, target_is_directory=True)
+    (cache_dir / "file-link").symlink_to(outside / "file.png")
+    done = []
+    ImageCache(cache_dir, lambda fn, cb: tasks.run(fn, lambda *a: (cb(*a), done.append(1))))
+    run_until(lambda: done)
+    assert [p.name for p in cache_dir.iterdir()] == [keep.name]
+    assert (outside / "file.png").read_bytes() == PNG
+
+
 def test_image_cache_reports_failure(tmp_path):
     def fetch():
         raise OSError("gone")
