@@ -219,7 +219,10 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
   without handing the certificate to every host on the way (tests
   `test_web_view_gives_no_certificate_to_another_host`,
   `test_web_view_gives_the_certificate_to_extra_hosts`: a login page on
-  `localhost` redirects to a mutual-TLS host `127.0.0.1`). After each page load the
+  `localhost` redirects to a mutual-TLS host `127.0.0.1`). Apps must
+  pass `certificate_hosts_extra` from a setting when they adopt this, or
+  a login whose identity provider is on another host behind the same
+  mutual TLS fails: nexumia-de/ephyra#33, nexumia-de/nauta#45. After each page load the
   cookies for the server's origin are tried with the app's probe in a
   separate client; once the server answers, the page reports them.
 - **Session**: `CookieJar` keeps `{origin: "name=value; …"}` in the app's
