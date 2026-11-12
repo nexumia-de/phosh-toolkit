@@ -288,7 +288,9 @@ certificate, and credentials must not sit in the URLs the player sees.
 The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 
 - a `ThreadingHTTPServer` on 127.0.0.1, random port, random path secret
-  (other local programs can't use it);
+  (other local programs can't use it); its request log replaces the
+  secret and every query with `…` (`redact`), since the secret is the
+  relay's only guard;
 - the app's `forward(path)` returns the client, the upstream URL on the
   current route and the headers, so each app adds its own credentials
   (Jellyfin: `Authorization` header). A fourth item, a form body, sends

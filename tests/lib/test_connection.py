@@ -397,3 +397,20 @@ def test_proxy_follows_its_router_by_itself(server):
     assert calls == [1]
     # A plain function has no router to follow.
     assert MediaProxy(lambda path: None)._following is None
+
+
+def test_proxy_log_has_no_secret_and_no_query(server, caplog):
+    http = client()
+    proxy = MediaProxy(lambda path: (http, server.url + path, {}, None))
+    caplog.set_level("DEBUG", logger="phosh_toolkit.proxy")
+    try:
+        url = proxy.url("/media?api_key=token")
+        request = urllib.request.Request(url, headers={"Range": "bytes=0-9"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read()
+        secret = proxy.secret
+    finally:
+        proxy.stop()
+    logged = caplog.text
+    assert "/media" in logged
+    assert secret not in logged and "api_key" not in logged

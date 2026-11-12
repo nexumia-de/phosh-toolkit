@@ -9,6 +9,7 @@ credentials as header or query) and forwards the request with the client
 certificate, streaming the answer back. Range requests pass through, so
 seeking works. No GTK."""
 import logging
+import re
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -104,12 +105,23 @@ class MediaProxy:
         return f"http://127.0.0.1:{port}/{self.secret}{path}"
 
 
+def redact(value, secret):
+    """`value` for a log line: the proxy's secret and every query
+    replaced by "…"."""
+    if not isinstance(value, str):
+        return value
+    text = value.replace(secret, "…") if secret else value
+    return re.sub(r"\?\S*", "?…", text)
+
+
 class _Handler(BaseHTTPRequestHandler):
     owner = None
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
-        log.debug(fmt, *args)
+        # The request line holds the secret, the only guard of this
+        # loopback relay, and a query may hold credentials.
+        log.debug(fmt, *(redact(a, self.owner.secret) for a in args))
 
     def do_HEAD(self):
         self._forward("HEAD")
