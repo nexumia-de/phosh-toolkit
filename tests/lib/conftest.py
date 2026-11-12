@@ -22,7 +22,8 @@ MEDIA = bytes(range(256)) * 4096   # 1 MiB for range tests
 class FakeServer:
     """GET /info answers {"id": server_id}; /media serves MEDIA with
     ranges; /private needs "Authorization: Bearer good" (else 401); /nginx
-    answers like nginx without a client certificate; /page is a web page.
+    answers like nginx without a client certificate; /page is a web page;
+/redirect?status=302&to=URL redirects to URL; /loop redirects to itself.
 
     With login=True it behaves like a reverse proxy with its own login
     (Pangolin, Authelia, …): without the cookie "proxy-session=ok" a
@@ -153,7 +154,19 @@ class _Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if self._proxy_login(path):
             return
-        if path == "/info":
+        if path == "/loop":
+            self.send_response(302)
+            self.send_header("Location", "/loop")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif path == "/redirect":
+            from urllib.parse import parse_qs, urlsplit
+            query = parse_qs(urlsplit(self.path).query)
+            self.send_response(int(query.get("status", ["302"])[0]))
+            self.send_header("Location", query["to"][0])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif path == "/info":
             self._send(200, json.dumps({"id": owner.server_id}).encode())
         elif path == "/private":
             ok = self.headers.get("Authorization") == "Bearer good"

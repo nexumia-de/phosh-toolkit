@@ -52,6 +52,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | Module | GTK | What |
 |---|---|---|
 | `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`, `open()` streams an answer (also for a `POST` body); errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
+| `redirects` | no | Redirect rules of `http.Client` (`next_hop`, `carried_headers`) and `origin(url)`, the key of the per-origin headers |
 | `tls` | no | `load(data, password)` for PKCS #12 or PEM with key, `describe(cert)` |
 | `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
 | `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s, from GLib's network monitor and NetworkManager's signals) |
@@ -150,6 +151,25 @@ the server id check keeps safe.
   become `certificate-required`, and the form marks the certificate row.
 - The server certificate is checked against the system's CAs; a private
   CA is not supported yet (Ephyra's follow-up issue).
+
+# Redirects (`redirects`, `http`)
+
+`http.Client` follows redirects itself (`SOUP_MESSAGE_NO_REDIRECT`), up
+to 20 hops, because libsoup keeps raw request headers on a redirect to
+another host: the proxy cookie set as a `Cookie` header went along to
+the new host (reproduced with libsoup 3.4.4, issue
+nexumia-de/phosh-toolkit#45). For each hop:
+
+- `cookies` and `proxy_auth` are looked up again for the hop's origin,
+  so they reach only their own origin;
+- the app's own headers stay within one origin; across origins
+  `Authorization`, `Cookie`, `Proxy-Authorization` and Jellyfin's
+  `X-Emby-*`/`X-MediaBrowser-Token` are dropped;
+- 301/302 after a `POST` and every 303 continue as `GET` without body;
+  a 307/308 that would resend a body is handed to the caller unfollowed
+  (as libsoup did), so a form body with a password never reaches a
+  redirect target;
+- a `Location` that is not `http(s)` is handed to the caller.
 
 # Proxy login (`proxy_login`)
 
