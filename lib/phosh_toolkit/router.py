@@ -7,7 +7,7 @@ from gi.repository import GObject
 
 from phosh_toolkit import network, route, tasks
 from phosh_toolkit.http import (AUTH, NETWORK, PROXY_LOGIN, SERVER, HttpError,
-                                proxy_login)
+                                page_url, proxy_login)
 
 log = logging.getLogger("phosh_toolkit.router")
 
@@ -104,7 +104,7 @@ class Router(GObject.Object):
             try:
                 server_id, info = _probe(self.probe, url, route.TIMEOUT[kind])
             except HttpError as e:
-                log.info("%s %s: %s", kind, url, e)
+                log.info("%s %s: %s", kind, page_url(url), e)
                 # The remote error explains more (certificate, TLS).
                 if kind == route.REMOTE or error.kind == NETWORK:
                     error = e
@@ -112,7 +112,8 @@ class Router(GObject.Object):
             if expected and server_id != expected:
                 # Another server at the same address: never send our
                 # credentials there.
-                log.warning("%s %s is server %s, not ours", kind, url, server_id)
+                log.warning("%s %s is server %s, not ours", kind,
+                            page_url(url), server_id)
                 error = HttpError(NETWORK, "A different server answers")
                 continue
             return kind, url, info

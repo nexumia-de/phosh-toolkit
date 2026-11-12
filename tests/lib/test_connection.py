@@ -414,3 +414,50 @@ def test_proxy_log_has_no_secret_and_no_query(server, caplog):
     logged = caplog.text
     assert "/media" in logged
     assert secret not in logged and "api_key" not in logged
+
+
+# --- Log lines carry no user info, query or proxy secret ---
+
+
+def test_invalid_address_error_has_no_query_and_no_user_info():
+    with pytest.raises(HttpError) as e:
+        client().request("GET", "http://user:pw@host /x?api_key=token")
+    assert str(e.value) == "Invalid address http://host /x"
+
+
+def test_router_log_has_no_user_info_and_no_query(server, ssids, caplog):
+    caplog.set_level("INFO", logger="phosh_toolkit.router")
+    with_user = server.url.replace("http://", "http://user:pw@")
+    conn = Route(client(), "http://user:pw@127.0.0.1:9/?token=secret",
+                 with_user, expected="server-b")
+    assert isinstance(resolve(conn), HttpError)
+    logged = caplog.text
+    assert "127.0.0.1:9" in logged and "is server server-a, not ours" in logged
+    assert "pw" not in logged and "token" not in logged
+
+
+def test_proxy_error_log_has_no_secret_and_no_query(caplog):
+    caplog.set_level("INFO", logger="phosh_toolkit.proxy")
+    holder = {}
+
+    class Failing:
+        def open(self, method, url, headers, body=None):
+            raise HttpError(NETWORK, f"failed {holder['url']}")
+
+    def forward(path):
+        if path.startswith("/noroute"):
+            raise LookupError(f"no route for {holder['url']}")
+        return Failing(), "http://127.0.0.1:9" + path, {}
+
+    proxy = MediaProxy(forward)
+    try:
+        for path in ("/noroute?api_key=token", "/media?api_key=token"):
+            holder["url"] = proxy.url(path)
+            with pytest.raises(urllib.error.HTTPError):
+                urllib.request.urlopen(holder["url"], timeout=10)
+        secret = proxy.secret
+    finally:
+        proxy.stop()
+    logged = caplog.text
+    assert "no route for" in logged and "failed" in logged
+    assert secret not in logged and "api_key" not in logged

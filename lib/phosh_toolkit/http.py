@@ -53,6 +53,15 @@ def page_url(url):
     return f"{parts.scheme}://{host}{port}{parts.path}"
 
 
+def _shown(url):
+    """page_url(url) for messages and log lines, also for an address
+    urlsplit rejects."""
+    try:
+        return page_url(url)
+    except ValueError:
+        return url.split("?")[0].split("#")[0].rpartition("@")[2]
+
+
 def proxy_login(url, challenge=""):
     url = page_url(url)
     if challenge.lower().startswith("basic"):
@@ -139,7 +148,7 @@ class Client:
         except TypeError:
             msg = None
         if msg is None:
-            raise HttpError(NETWORK, f"Invalid address {url}")
+            raise HttpError(NETWORK, f"Invalid address {_shown(url)}")
         # Redirects are followed by _send(), so that the headers below
         # are set again for each hop's own origin.
         msg.add_flags(Soup.MessageFlags.NO_REDIRECT)

@@ -62,6 +62,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `certificate` | no | `CertificateFile(path, keyring)`: private copy (mode 600), password in the keyring |
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
 | `media` | no | `Media(uri, video=True, audio_position=None)`: `playbin3` with a `GtkMediaStream`-like API, audio track choice, no subtitles |
+| `redact` | no | `redact(text, secret)`: text for a log line without the media proxy's secret and queries |
 | `tasks` | no | `run(fn, done)`: worker thread, result on the main loop |
 | `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures; files are named after the SHA-256 of the key, so a key built from server data never chooses the path; on start a worker deletes every entry of `directory` whose name is not 64 lower-case hex characters (files of older versions named after the key, subdirectories; symbolic links are removed, not followed) |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
@@ -151,6 +152,16 @@ the server id check keeps safe.
   become `certificate-required`, and the form marks the certificate row.
 - The server certificate is checked against the system's CAs; a private
   CA is not supported yet (Ephyra's follow-up issue).
+
+# Addresses in log lines
+
+No log line or error message holds a query, user info or the proxy
+secret: `HttpError` "Invalid address" and the router's probe lines show
+`page_url()`, the proxy and `Media` pass their text through `redact()`.
+Tests `test_invalid_address_error_has_no_query_and_no_user_info`,
+`test_router_log_has_no_user_info_and_no_query`,
+`test_proxy_error_log_has_no_secret_and_no_query` and
+`test_gstreamer_error_log_has_no_secret_and_no_query`.
 
 # Redirects (`redirects`, `http`)
 
@@ -300,7 +311,8 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 - a `ThreadingHTTPServer` on 127.0.0.1, random port, random path secret
   (other local programs can't use it); its request log replaces the
   secret and every query with `…` (`redact`), since the secret is the
-  relay's only guard;
+  relay's only guard; so do its error lines and `Media`'s log lines
+  (GStreamer's debug text of an HTTP error holds the whole URL);
 - the app's `forward(path)` returns the client, the upstream URL on the
   current route and the headers, so each app adds its own credentials
   (Jellyfin: `Authorization` header). A fourth item, a form body, sends

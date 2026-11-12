@@ -9,7 +9,6 @@ credentials as header or query) and forwards the request with the client
 certificate, streaming the answer back. Range requests pass through, so
 seeking works. No GTK."""
 import logging
-import re
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from gi.repository import Gio, GLib
 
 from phosh_toolkit.http import HttpError
+from phosh_toolkit.redact import redact  # noqa: F401 (also for apps)
 from phosh_toolkit.router import Router
 
 log = logging.getLogger("phosh_toolkit.proxy")
@@ -105,15 +105,6 @@ class MediaProxy:
         return f"http://127.0.0.1:{port}/{self.secret}{path}"
 
 
-def redact(value, secret):
-    """`value` for a log line: the proxy's secret and every query
-    replaced by "…"."""
-    if not isinstance(value, str):
-        return value
-    text = value.replace(secret, "…") if secret else value
-    return re.sub(r"\?\S*", "?…", text)
-
-
 class _Handler(BaseHTTPRequestHandler):
     owner = None
     protocol_version = "HTTP/1.1"
@@ -137,7 +128,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             client, url, extra, *body = self.owner.forward(self.path[len(prefix) - 1:])
         except Exception as e:  # not signed in, no route
-            log.info("proxy: %s", e)
+            log.info("proxy: %s", redact(str(e), self.owner.secret))
             self.send_error(502, str(e))
             return
         # identity: libsoup would decode a compressed body, which would
@@ -152,7 +143,7 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 status, upstream, stream = client.open(method, url, headers)
         except HttpError as e:
-            log.info("proxy: %s", e)
+            log.info("proxy: %s", redact(str(e), self.owner.secret))
             self.send_error(502, str(e))
             return
         self.send_response(status)
