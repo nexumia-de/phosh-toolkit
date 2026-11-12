@@ -1,4 +1,5 @@
 """Images from the server: cached on disk and as textures in memory."""
+import hashlib
 import logging
 from collections import OrderedDict
 from pathlib import Path
@@ -23,8 +24,9 @@ class ImageCache:
 
     def load(self, name, fetch, done):
         """done(Gdk.Texture or None) on the main loop. `name` is the file
-        name in the cache and must change when the image does (include
-        the server's tag or size); `fetch()` returns the image bytes and
+        cache key and must change when the image does (include the
+        server's tag or size); the file is named after its hash, so a
+        name from the server never chooses the path. `fetch()` returns the image bytes and
         runs in a worker when the file is not cached."""
         if name in self._cache:
             self._cache.move_to_end(name)
@@ -34,7 +36,7 @@ class ImageCache:
             self._waiting[name].append(done)
             return
         self._waiting[name] = [done]
-        path = self.directory / name
+        path = self.directory / file_name(name)
 
         def work():
             try:
@@ -60,3 +62,9 @@ class ImageCache:
                 callback(texture)
 
         self.call(work, finished)
+
+
+def file_name(name):
+    """The cache file of `name`: a hash, never a path the server
+    controls (no "..", "/" or absolute path)."""
+    return hashlib.sha256(name.encode("utf-8")).hexdigest()

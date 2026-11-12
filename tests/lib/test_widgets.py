@@ -7,7 +7,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: E402
 
 from phosh_toolkit import tasks  # noqa: E402
-from phosh_toolkit.images import ImageCache  # noqa: E402
+from phosh_toolkit.images import ImageCache, file_name  # noqa: E402
 from phosh_toolkit.testing import run_until  # noqa: E402
 from phosh_toolkit.widgets import Ratio, error_page, loading_page  # noqa: E402
 
@@ -41,13 +41,27 @@ def test_image_cache_fetches_once(tmp_path):
     cache.load("a-1.png", fetch, results.append)   # waits for the first
     run_until(lambda: len(results) == 2)
     assert len(fetched) == 1 and results[0].get_width() == 1
-    assert (tmp_path / "images" / "a-1.png").read_bytes() == PNG
+    assert (tmp_path / "images" / file_name("a-1.png")).read_bytes() == PNG
     # Out of memory, from the disk.
     cache.load("b-1.png", fetch, results.append)
     run_until(lambda: len(results) == 3)
     cache.load("a-1.png", fetch, results.append)
     run_until(lambda: len(results) == 4)
     assert len(fetched) == 2 and results[3] is not None
+
+
+def test_image_cache_keys_from_the_server_stay_in_the_cache(tmp_path):
+    # Apps build keys from server tags; a key never chooses the path.
+    names = ("../../escaped.png", str(tmp_path / "absolute.png"),
+             "a/b.png", "plain-tag-360.png")
+    cache = ImageCache(tmp_path / "cache", tasks.run)
+    results = []
+    for name in names:
+        cache.load(name, lambda: PNG, results.append)
+    run_until(lambda: len(results) == len(names))
+    files = [p for p in tmp_path.rglob("*") if p.is_file()]
+    assert sorted(p.name for p in files) == sorted(map(file_name, names))
+    assert all(p.parent == tmp_path / "cache" for p in files)
 
 
 def test_image_cache_reports_failure(tmp_path):

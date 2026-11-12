@@ -63,7 +63,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
 | `media` | no | `Media(uri, video=True, audio_position=None)`: `playbin3` with a `GtkMediaStream`-like API, audio track choice, no subtitles |
 | `tasks` | no | `run(fn, done)`: worker thread, result on the main loop |
-| `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
+| `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures; files are named after the SHA-256 of the key, so a key built from server data never chooses the path |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
 | `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |

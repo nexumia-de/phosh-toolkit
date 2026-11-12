@@ -2,6 +2,7 @@
 
 ## 2026-11-12
 * **Fix**: [Shared connection](shared-connection.md#redirects-redirects-http), security review nexumia-de/phosh-toolkit#45 finding 1: the proxy cookie leaked on cross-host redirects. `http.Client` follows redirects itself (new module `redirects`) and scopes cookie, proxy Basic auth and the app's secret headers to their origin per hop; a body is never resent to a redirect target. Tests in `tests/lib/test_redirects.py`.
+* **Fix**: [Shared connection](shared-connection.md#modules), #45 finding 2: `ImageCache` wrote to `directory / name` with names built from server tags, so `..` or an absolute path wrote outside the cache. Files are now named after the SHA-256 of the key (existing caches are fetched again once). Test in `tests/lib/test_widgets.py`.
 
 ## 2026-11-08
 * **Update**: Agent rules split at the owner's request to use fewer tokens: `agents/core.md` for every repository (new section "Token budget"; CI watched by subscribing, not polling) and `agents/gtk-app.md` for GTK apps; `AGENTS.md` imports both. New decision [lean agent rules](decisions/lean-agent-rules.md), based on Gloaguen et al. 2026 (context files raise cost by over 20%). [Toolkit usage](toolkit-usage.md), README and the [AGENTS.md decision](decisions/agents-md.md) show the new imports.
