@@ -23,23 +23,23 @@ def origin(url):
     return f"{parts.scheme}://{(parts.hostname or '').lower()}:{port}"
 
 
-def next_hop(method, url, status, location, has_body):
-    """(method, url, keep_body) of the request a redirect asks for, or
-    None if the client hands the redirect to the caller: no Location, a
-    scheme other than http(s), or a 307/308 that would resend a body
-    (libsoup does not follow those either)."""
+def next_hop(method, url, status, location):
+    """(method, url) of the request a redirect asks for, or None if the
+    client hands the redirect to the caller, as libsoup does. Followed:
+    301/302 for GET and HEAD, and for POST as GET; 303 for any method as
+    GET (HEAD stays HEAD); 307/308 for GET and HEAD. Not followed: every
+    other method, no Location, a scheme other than http(s). The next hop
+    never has a body, so a body is never resent to a redirect target."""
     if status not in REDIRECTS or not location:
         return None
     target = urljoin(url, location)
     if urlsplit(target).scheme not in ("http", "https"):
         return None
-    if status in (307, 308):
-        if has_body:
-            return None
-        return method, target, False
-    if status == 303 or method == "POST":
-        return ("HEAD" if method == "HEAD" else "GET"), target, False
-    return method, target, has_body
+    if method in ("GET", "HEAD"):
+        return method, target
+    if status == 303 or (status in (301, 302) and method == "POST"):
+        return "GET", target
+    return None
 
 
 def carried_headers(headers, from_url, to_url):

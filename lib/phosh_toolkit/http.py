@@ -215,16 +215,14 @@ class Client:
                 raise classify(e) from None
             location = msg.props.response_headers.get_one("Location")
             hop = redirects.next_hop(method, url, msg.get_status(),
-                                     location, body is not None)
+                                     location)
             if hop is None:
                 return msg, result
             if not read:
                 result.close(None)
-            next_method, next_url, keep_body = hop
+            next_method, next_url = hop
             headers = redirects.carried_headers(headers, url, next_url)
-            if not keep_body:
-                body = None
-            method, url = next_method, next_url
+            method, url, body = next_method, next_url, None
         raise HttpError(NETWORK, "Too many redirects")
 
 

@@ -43,7 +43,7 @@ class FakeServer:
         self.login = False
         self.basic = None
         self.media_rate = 0     # bytes per second for /media; 0 is fast
-        self.bodies = []      # of POST requests
+        self.bodies = []      # of POST, PUT, PATCH and DELETE requests
         owner = self
 
         class Handler(_Handler):
@@ -114,6 +114,8 @@ class _Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         self.server_owner.bodies.append(self.rfile.read(length))
         self.do_GET()
+
+    do_PUT = do_PATCH = do_DELETE = do_POST
 
     def _proxy_login(self, path):
         """True if the proxy answered instead of the server."""

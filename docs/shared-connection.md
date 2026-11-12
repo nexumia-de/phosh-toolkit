@@ -165,10 +165,12 @@ nexumia-de/phosh-toolkit#45). For each hop:
 - the app's own headers stay within one origin; across origins
   `Authorization`, `Cookie`, `Proxy-Authorization` and Jellyfin's
   `X-Emby-*`/`X-MediaBrowser-Token` are dropped;
-- 301/302 after a `POST` and every 303 continue as `GET` without body;
-  a 307/308 that would resend a body is handed to the caller unfollowed
-  (as libsoup did), so a form body with a password never reaches a
-  redirect target;
+- which redirects are followed (as libsoup does): 301/302 for `GET` and
+  `HEAD`, and for `POST` as `GET`; 303 for any method as `GET` (`HEAD`
+  stays `HEAD`); 307/308 only for `GET` and `HEAD`. Every other case
+  (`PUT`, `PATCH`, `DELETE` on 301/302/307/308, `POST` on 307/308) is
+  handed to the caller unfollowed. The next hop never carries a body, so
+  a body is never resent to a redirect target;
 - a `Location` that is not `http(s)` is handed to the caller.
 
 # Proxy login (`proxy_login`)

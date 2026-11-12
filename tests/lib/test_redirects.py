@@ -75,15 +75,31 @@ def test_endless_redirects_are_an_error(server):
     assert len(server.requests) == redirects.MAX_HOPS + 1
 
 
+def test_a_put_body_reaches_no_redirect_target(server, other):
+    http = Client(UA)
+    for method in ("PUT", "PATCH", "DELETE"):
+        for status in (301, 302, 307, 308):
+            answer = http.request(method, hop(server, other.url + "/info", status),
+                                  body=b"p=secret")
+            assert answer.status == status
+    assert other.requests == [] and other.bodies == []
+
+
 def test_next_hop_rules():
     url = "https://a.example/x"
-    assert redirects.next_hop("GET", url, 302, "/y", False) == \
-        ("GET", "https://a.example/y", False)
-    assert redirects.next_hop("POST", url, 303, "/y", True) == \
-        ("GET", "https://a.example/y", False)
-    assert redirects.next_hop("PUT", url, 307, "/y", True) is None
-    assert redirects.next_hop("GET", url, 308, "/y", False) == \
-        ("GET", "https://a.example/y", False)
-    assert redirects.next_hop("GET", url, 302, "file:///etc/passwd", False) is None
-    assert redirects.next_hop("GET", url, 302, "", False) is None
-    assert redirects.next_hop("GET", url, 200, "/y", False) is None
+    y = "https://a.example/y"
+    for status in (301, 302, 307, 308):
+        for method in ("GET", "HEAD"):
+            assert redirects.next_hop(method, url, status, "/y") == (method, y)
+        for method in ("PUT", "PATCH", "DELETE", "OPTIONS"):
+            assert redirects.next_hop(method, url, status, "/y") is None
+    for status in (301, 302):
+        assert redirects.next_hop("POST", url, status, "/y") == ("GET", y)
+    for status in (307, 308):
+        assert redirects.next_hop("POST", url, status, "/y") is None
+    assert redirects.next_hop("POST", url, 303, "/y") == ("GET", y)
+    assert redirects.next_hop("PUT", url, 303, "/y") == ("GET", y)
+    assert redirects.next_hop("HEAD", url, 303, "/y") == ("HEAD", y)
+    assert redirects.next_hop("GET", url, 302, "file:///etc/passwd") is None
+    assert redirects.next_hop("GET", url, 302, "") is None
+    assert redirects.next_hop("GET", url, 200, "/y") is None
