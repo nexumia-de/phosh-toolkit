@@ -11,6 +11,10 @@ import gi
 gi.require_version("Soup", "3.0")
 from gi.repository import Gio, GLib, Soup  # noqa: E402
 
+from phosh_toolkit import redirects  # noqa: E402
+# origin() is part of this module's interface.
+from phosh_toolkit.redirects import origin  # noqa: E402,F401
+
 NETWORK = "network"          # no route, DNS, refused, timeout
 TLS = "tls"                  # handshake failed, untrusted server
 CERTIFICATE_REQUIRED = "certificate-required"
@@ -37,14 +41,29 @@ class HttpError(Exception):
         return self.challenge.lower().startswith("basic")
 
 
-def origin(url):
-    """"https://host:port" of a URL, the key of Client.cookies."""
+def page_url(url):
+    """`url` without user info, query and fragment: what may be shown or
+    opened in a login window. A query can carry credentials or tokens,
+    and the proxy passes the address on to its identity provider."""
     parts = urlsplit(url)
-    port = parts.port or {"http": 80, "https": 443}.get(parts.scheme, 0)
-    return f"{parts.scheme}://{(parts.hostname or '').lower()}:{port}"
+    host = parts.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    port = f":{parts.port}" if parts.port else ""
+    return f"{parts.scheme}://{host}{port}{parts.path}"
+
+
+def _shown(url):
+    """page_url(url) for messages and log lines, also for an address
+    urlsplit rejects."""
+    try:
+        return page_url(url)
+    except ValueError:
+        return url.split("?")[0].split("#")[0].rpartition("@")[2]
 
 
 def proxy_login(url, challenge=""):
+    url = page_url(url)
     if challenge.lower().startswith("basic"):
         return HttpError(PROXY_LOGIN, "The proxy in front of the server asks "
                          "for its user name and password", url=url,
@@ -129,7 +148,10 @@ class Client:
         except TypeError:
             msg = None
         if msg is None:
-            raise HttpError(NETWORK, f"Invalid address {url}")
+            raise HttpError(NETWORK, f"Invalid address {_shown(url)}")
+        # Redirects are followed by _send(), so that the headers below
+        # are set again for each hop's own origin.
+        msg.add_flags(Soup.MessageFlags.NO_REDIRECT)
         for name, value in (headers or {}).items():
             msg.props.request_headers.replace(name, value)
         if body is not None:
@@ -155,11 +177,9 @@ class Client:
         session = self._session()
         if timeout is not None:
             session.props.timeout = timeout
-        msg = self._message(method, url, headers, body, content_type)
         try:
-            data = session.send_and_read(msg, None)
-        except GLib.Error as e:
-            raise classify(e) from None
+            msg, data = self._send(session, method, url, headers, body,
+                                   content_type, read=True)
         finally:
             if timeout is not None:
                 session.props.timeout = 30
@@ -185,13 +205,34 @@ class Client:
              content_type="application/x-www-form-urlencoded"):
         """Blocking request that returns (status, headers, input stream)
         before the body is read, for the media proxy."""
-        session = self._session()
-        msg = self._message(method, url, headers, body, content_type)
-        try:
-            stream = session.send(msg, None)
-        except GLib.Error as e:
-            raise classify(e) from None
+        msg, stream = self._send(self._session(), method, url, headers,
+                                 body, content_type, read=False)
         return msg.get_status(), _headers(msg.props.response_headers), stream
+
+    def _send(self, session, method, url, headers, body, content_type,
+              read):
+        """(message, bytes or input stream) of the last hop, following
+        redirects (see redirects.py)."""
+        for _ in range(redirects.MAX_HOPS + 1):
+            msg = self._message(method, url, headers, body, content_type)
+            try:
+                if read:
+                    result = session.send_and_read(msg, None)
+                else:
+                    result = session.send(msg, None)
+            except GLib.Error as e:
+                raise classify(e) from None
+            location = msg.props.response_headers.get_one("Location")
+            hop = redirects.next_hop(method, url, msg.get_status(),
+                                     location)
+            if hop is None:
+                return msg, result
+            if not read:
+                result.close(None)
+            next_method, next_url = hop
+            headers = redirects.carried_headers(headers, url, next_url)
+            method, url, body = next_method, next_url, None
+        raise HttpError(NETWORK, "Too many redirects")
 
 
 def _wants_json(headers):

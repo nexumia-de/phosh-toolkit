@@ -52,6 +52,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | Module | GTK | What |
 |---|---|---|
 | `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`, `open()` streams an answer (also for a `POST` body); errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
+| `redirects` | no | Redirect rules of `http.Client` (`next_hop`, `carried_headers`) and `origin(url)`, the key of the per-origin headers |
 | `tls` | no | `load(data, password)` for PKCS #12 or PEM with key, `describe(cert)` |
 | `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
 | `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s, from GLib's network monitor and NetworkManager's signals) |
@@ -61,8 +62,9 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `certificate` | no | `CertificateFile(path, keyring)`: private copy (mode 600), password in the keyring |
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
 | `media` | no | `Media(uri, video=True, audio_position=None)`: `playbin3` with a `GtkMediaStream`-like API, audio track choice, no subtitles |
+| `redact` | no | `redact(text, secret)`: text for a log line without the media proxy's secret and queries |
 | `tasks` | no | `run(fn, done)`: worker thread, result on the main loop |
-| `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures |
+| `images` | GDK | `ImageCache(directory, call)`: disk and memory cache of textures; files are named after the SHA-256 of the key, so a key built from server data never chooses the path; on start a worker deletes every entry of `directory` whose name is not 64 lower-case hex characters (files of older versions named after the key, subdirectories; symbolic links are removed, not followed) |
 | `style` | yes | `apply(style)`, `style_row(current, changed)`: Follow System / Light / Dark ([accent decision](decisions/app-accent-colours.md)) |
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
 | `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |
@@ -151,6 +153,42 @@ the server id check keeps safe.
 - The server certificate is checked against the system's CAs; a private
   CA is not supported yet (Ephyra's follow-up issue).
 
+# Addresses in log lines
+
+No log line or error message holds a query, user info or the proxy
+secret: `HttpError` "Invalid address" and the router's probe lines show
+`page_url()`, the proxy and `Media` pass their text through `redact()`.
+Tests `test_invalid_address_error_has_no_query_and_no_user_info`,
+`test_router_log_has_no_user_info_and_no_query`,
+`test_proxy_error_log_has_no_secret_and_no_query` and
+`test_gstreamer_error_log_has_no_secret_and_no_query`.
+
+# Redirects (`redirects`, `http`)
+
+`http.Client` follows redirects itself (`SOUP_MESSAGE_NO_REDIRECT`), up
+to 20 hops, because libsoup keeps raw request headers on a redirect to
+another host: the proxy cookie set as a `Cookie` header went along to
+the new host (reproduced with libsoup 3.4.4, issue
+nexumia-de/phosh-toolkit#45). For each hop:
+
+- `cookies` and `proxy_auth` are looked up again for the hop's origin,
+  so they reach only their own origin;
+- the app's own headers stay within one origin; across origins only an
+  allow-list goes along (`CROSS_ORIGIN_HEADERS`: `Accept`,
+  `Accept-Encoding`, `Accept-Language`, `If-Range`, `Range`,
+  `User-Agent`; the media proxy needs `If-Range` and
+  `Accept-Encoding: identity` for a stream redirected to another host).
+  Everything else is dropped: `Authorization`, Jellyfin's tokens, API
+  keys, Nauta's `Origin` and `X-YouTube-Client-*`, and any header added
+  later, until it is put on the list;
+- which redirects are followed (as libsoup does): 301/302 for `GET` and
+  `HEAD`, and for `POST` as `GET`; 303 for any method as `GET` (`HEAD`
+  stays `HEAD`); 307/308 only for `GET` and `HEAD`. Every other case
+  (`PUT`, `PATCH`, `DELETE` on 301/302/307/308, `POST` on 307/308) is
+  handed to the caller unfollowed. The next hop never carries a body, so
+  a body is never resent to a redirect target;
+- a `Location` that is not `http(s)` is handed to the caller.
+
 # Proxy login (`proxy_login`)
 
 Many self-hosters put a login of the reverse proxy in front of their
@@ -171,8 +209,20 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
   (`unauthorized()`).
 - **Login** (`make_page`, `sign_in`): an `AdwNavigationPage` with a
   WebKitGTK 6 web view in an ephemeral network session opens the
-  address. WebKit's client-certificate request is answered with the app's
-  certificate, so mutual TLS works there too. After each page load the
+  refused address without user info, query and fragment (`page_url`,
+  `start_url`; a query can carry tokens, and the proxy passes the address
+  on to its identity provider), or the server's address if the refused
+  one is on another origin. WebKit's client-certificate request is
+  answered with the app's certificate only for the server's host and the
+  hosts in `certificate_hosts_extra` (e.g. an identity provider behind
+  the same mutual TLS); other hosts get none, so mutual TLS works there
+  without handing the certificate to every host on the way (tests
+  `test_web_view_gives_no_certificate_to_another_host`,
+  `test_web_view_gives_the_certificate_to_extra_hosts`: a login page on
+  `localhost` redirects to a mutual-TLS host `127.0.0.1`). Apps must
+  pass `certificate_hosts_extra` from a setting when they adopt this, or
+  a login whose identity provider is on another host behind the same
+  mutual TLS fails: nexumia-de/ephyra#33, nexumia-de/nauta#45. After each page load the
   cookies for the server's origin are tried with the app's probe in a
   separate client; once the server answers, the page reports them.
 - **Session**: `CookieJar` keeps `{origin: "name=value; …"}` in the app's
@@ -262,7 +312,10 @@ certificate, and credentials must not sit in the URLs the player sees.
 The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 
 - a `ThreadingHTTPServer` on 127.0.0.1, random port, random path secret
-  (other local programs can't use it);
+  (other local programs can't use it); its request log replaces the
+  secret and every query with `…` (`redact`), since the secret is the
+  relay's only guard; so do its error lines and `Media`'s log lines
+  (GStreamer's debug text of an HTTP error holds the whole URL);
 - the app's `forward(path)` returns the client, the upstream URL on the
   current route and the headers, so each app adds its own credentials
   (Jellyfin: `Authorization` header). A fourth item, a form body, sends

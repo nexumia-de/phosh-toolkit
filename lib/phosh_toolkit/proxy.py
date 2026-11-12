@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from gi.repository import Gio, GLib
 
 from phosh_toolkit.http import HttpError
+from phosh_toolkit.redact import redact  # noqa: F401 (also for apps)
 from phosh_toolkit.router import Router
 
 log = logging.getLogger("phosh_toolkit.proxy")
@@ -109,7 +110,9 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
-        log.debug(fmt, *args)
+        # The request line holds the secret, the only guard of this
+        # loopback relay, and a query may hold credentials.
+        log.debug(fmt, *(redact(a, self.owner.secret) for a in args))
 
     def do_HEAD(self):
         self._forward("HEAD")
@@ -125,7 +128,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             client, url, extra, *body = self.owner.forward(self.path[len(prefix) - 1:])
         except Exception as e:  # not signed in, no route
-            log.info("proxy: %s", e)
+            log.info("proxy: %s", redact(str(e), self.owner.secret))
             self.send_error(502, str(e))
             return
         # identity: libsoup would decode a compressed body, which would
@@ -140,7 +143,7 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 status, upstream, stream = client.open(method, url, headers)
         except HttpError as e:
-            log.info("proxy: %s", e)
+            log.info("proxy: %s", redact(str(e), self.owner.secret))
             self.send_error(502, str(e))
             return
         self.send_response(status)

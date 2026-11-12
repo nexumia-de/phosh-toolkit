@@ -174,3 +174,21 @@ def test_chosen_audio_track_and_no_subtitle():
         assert media.position_now() > 0
     finally:
         media.stop()
+
+
+def test_gstreamer_error_log_has_no_secret_and_no_query(server, caplog):
+    # GStreamer's debug text of an HTTP error holds the full URL.
+    caplog.set_level("DEBUG", logger="phosh_toolkit.media")
+    http = Client("Test/1.0")
+    proxy = MediaProxy(lambda path: (http, server.url + path, {}))
+    try:
+        media = make(proxy.url("/missing?api_key=token"))
+        media.play()
+        run_until(lambda: media.get_error(), 15)
+        media.stop()
+        secret = proxy.secret
+    finally:
+        proxy.stop()
+    logged = caplog.text
+    assert "gst error" in logged and "/missing" in logged
+    assert secret not in logged and "api_key" not in logged

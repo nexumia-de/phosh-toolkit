@@ -15,11 +15,14 @@ Subtitles are never played by GStreamer: an app that shows them draws
 them itself (Ephyra, docs/decisions/subtitles-in-app.md there).
 """
 import logging
+from urllib.parse import urlsplit
 
 import gi
 
 gi.require_version("Gst", "1.0")
 from gi.repository import GLib, GObject, Gst  # noqa: E402
+
+from phosh_toolkit.redact import redact  # noqa: E402
 
 log = logging.getLogger("phosh_toolkit.media")
 
@@ -91,6 +94,10 @@ class Media(GObject.Object):
         self.pipeline = Gst.ElementFactory.make("playbin3", None) or \
             Gst.ElementFactory.make("playbin", None)
         self.pipeline.props.uri = uri
+        # The media proxy's secret is the first path segment of its URLs.
+        parts = urlsplit(uri)
+        self._secret = parts.path.split("/")[1] \
+            if parts.scheme in ("http", "https") and parts.path.count("/") > 1 else ""
         self.audio_position = audio_position
         self._collection = None
         self._name = self.pipeline.get_name()
@@ -199,8 +206,11 @@ class Media(GObject.Object):
 
     # --- bus -----------------------------------------------------------
 
+    def _redact(self, text):
+        return redact(text, self._secret) if text else text
+
     def _fail(self, message):
-        log.warning("playback: %s", message)
+        log.warning("playback: %s", self._redact(message))
         if self.playing:
             self.playing = False
         self.error = message
@@ -209,7 +219,10 @@ class Media(GObject.Object):
         kind = message.type
         if kind == Gst.MessageType.ERROR:
             error, debug = message.parse_error()
-            log.debug("gst error: %s (%s)", error.message, debug)
+            # GStreamer's debug text holds the URL: the media proxy's
+            # secret and the query.
+            log.debug("gst error: %s (%s)", self._redact(error.message),
+                      self._redact(debug))
             self._fail(error.message)
         elif kind == Gst.MessageType.EOS:
             self.ended = True
