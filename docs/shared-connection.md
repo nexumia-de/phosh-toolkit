@@ -162,9 +162,14 @@ nexumia-de/phosh-toolkit#45). For each hop:
 
 - `cookies` and `proxy_auth` are looked up again for the hop's origin,
   so they reach only their own origin;
-- the app's own headers stay within one origin; across origins
-  `Authorization`, `Cookie`, `Proxy-Authorization` and Jellyfin's
-  `X-Emby-*`/`X-MediaBrowser-Token` are dropped;
+- the app's own headers stay within one origin; across origins only an
+  allow-list goes along (`CROSS_ORIGIN_HEADERS`: `Accept`,
+  `Accept-Encoding`, `Accept-Language`, `If-Range`, `Range`,
+  `User-Agent`; the media proxy needs `If-Range` and
+  `Accept-Encoding: identity` for a stream redirected to another host).
+  Everything else is dropped: `Authorization`, Jellyfin's tokens, API
+  keys, Nauta's `Origin` and `X-YouTube-Client-*`, and any header added
+  later, until it is put on the list;
 - which redirects are followed (as libsoup does): 301/302 for `GET` and
   `HEAD`, and for `POST` as `GET`; 303 for any method as `GET` (`HEAD`
   stays `HEAD`); 307/308 only for `GET` and `HEAD`. Every other case

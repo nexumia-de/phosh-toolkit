@@ -8,11 +8,13 @@ MAX_HOPS = 20
 
 REDIRECTS = (301, 302, 303, 307, 308)
 
-# Headers the app sets that carry a secret: dropped when a redirect leaves
-# the origin they were meant for.
-SECRET_HEADERS = ("authorization", "cookie", "proxy-authorization",
-                  "x-emby-authorization", "x-emby-token",
-                  "x-mediabrowser-token")
+# The only headers of the app that may follow a redirect to another
+# origin; all others (Authorization, Cookie, API keys, Jellyfin's tokens,
+# headers no one has thought of yet) stay with the origin they were set
+# for. If-Range and Accept-Encoding are the media proxy's, for a stream
+# redirected to another host.
+CROSS_ORIGIN_HEADERS = ("accept", "accept-encoding", "accept-language",
+                        "if-range", "range", "user-agent")
 
 
 def origin(url):
@@ -44,9 +46,9 @@ def next_hop(method, url, status, location):
 
 def carried_headers(headers, from_url, to_url):
     """The app's headers for the next hop: all of them within one origin,
-    without SECRET_HEADERS across origins."""
+    only CROSS_ORIGIN_HEADERS across origins."""
     headers = dict(headers or {})
     if origin(from_url) == origin(to_url):
         return headers
     return {name: value for name, value in headers.items()
-            if name.lower() not in SECRET_HEADERS}
+            if name.lower() in CROSS_ORIGIN_HEADERS}

@@ -39,6 +39,21 @@ def test_cross_origin_redirect_drops_origin_scoped_headers(server, other):
     assert received["Accept"] == "application/json"
 
 
+def test_only_allowed_headers_reach_another_origin(server, other):
+    sent = {"X-Api-Key": "secret", "X-Emby-Token": "secret",
+            "Origin": server.url, "Accept": "application/json",
+            "Range": "bytes=0-9"}
+    Client(UA).request("GET", hop(server, other.url + "/info"), sent)
+    assert server.requests[-1][2]["X-Api-Key"] == "secret"
+    received = other.requests[-1][2]
+    assert "X-Api-Key" not in received and "X-Emby-Token" not in received
+    assert "Origin" not in received
+    assert received["Accept"] == "application/json"
+    assert received["Range"] == "bytes=0-9"
+    assert redirects.carried_headers(sent, "https://a.example/x",
+                                     "https://a.example/y") == sent
+
+
 def test_redirect_back_to_the_origin_gets_its_headers_again(server, other):
     http = Client(UA)
     http.cookies = {origin(server.url): "proxy-session=ok"}
