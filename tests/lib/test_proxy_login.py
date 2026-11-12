@@ -254,3 +254,31 @@ def test_media_proxy_sends_basic_auth(basic):
             assert response.status == 200
     finally:
         proxy.stop()
+
+
+# --- What the login window opens and whom it gives the certificate ---
+
+
+def test_proxy_login_error_carries_no_query(server):
+    with pytest.raises(HttpError) as e:
+        Client(UA).request("GET", server.url + "/page?api_key=secret&u=me",
+                           {"Accept": "application/json"})
+    assert e.value.url == server.url + "/page"
+
+
+def test_login_window_opens_only_the_servers_origin():
+    server = "https://media.example.org/jellyfin"
+    assert proxy_login.start_url(server, "https://user:pw@media.example.org/"
+                                 "jellyfin/Items?api_key=secret#x") == \
+        "https://media.example.org/jellyfin/Items"
+    assert proxy_login.start_url(server, "https://evil.example/x?y") == \
+        "https://media.example.org/jellyfin"
+    assert proxy_login.start_url(server, "") == server
+
+
+def test_certificate_only_for_the_servers_host():
+    hosts = proxy_login.certificate_hosts("https://Media.Example.org:8443/x")
+    assert hosts == {"media.example.org"}
+    assert proxy_login.certificate_hosts(
+        "https://media.example.org", ["Auth.Example.org"]) == \
+        {"media.example.org", "auth.example.org"}

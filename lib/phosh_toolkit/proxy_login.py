@@ -13,11 +13,12 @@ authentication) need no web view: ProxyCredentials keeps user name and
 password per origin in the keyring for http.Client.proxy_auth."""
 import json
 import logging
+from urllib.parse import urlsplit
 
 import gi
 
 from phosh_toolkit import tasks
-from phosh_toolkit.http import Client, HttpError, basic_auth, origin
+from phosh_toolkit.http import Client, HttpError, basic_auth, origin, page_url
 
 log = logging.getLogger("phosh_toolkit.proxy_login")
 
@@ -100,7 +101,26 @@ def available():
     return True
 
 
-def make_page(server_url, login_url, http, probe, done, trusted=()):
+def certificate_hosts(server_url, extra=()):
+    """Lower-case host names the web view gives the client certificate
+    to: the server's and `extra` (e.g. an identity provider behind the
+    same mutual TLS), never any other host."""
+    hosts = {(urlsplit(server_url).hostname or "").lower()}
+    hosts.update(h.lower() for h in extra)
+    hosts.discard("")
+    return hosts
+
+
+def start_url(server_url, login_url):
+    """What the web view opens: login_url without query and user info if
+    it is on the server's origin, else the server's address."""
+    if login_url and origin(login_url) == origin(server_url):
+        return page_url(login_url)
+    return page_url(server_url)
+
+
+def make_page(server_url, login_url, http, probe, done, trusted=(),
+              certificate_hosts_extra=()):
     """An Adw.NavigationPage with the proxy's login page.
 
     - server_url: the server's base address (the route's base URL).
@@ -112,7 +132,9 @@ def make_page(server_url, login_url, http, probe, done, trusted=()):
       proxy; `cookies` is the Cookie header for server_url's origin. The
       caller stores it (CookieJar) and pops the page.
     - trusted: (Gio.TlsCertificate, host) pairs the web view accepts
-      besides the system's CAs (tests with their own CA)."""
+      besides the system's CAs (tests with their own CA).
+    - certificate_hosts_extra: hosts besides the server's that get the
+      client certificate when they ask (see certificate_hosts())."""
     gi.require_version("WebKit", "6.0")
     from gi.repository import Adw, Gtk, WebKit
 
@@ -122,13 +144,17 @@ def make_page(server_url, login_url, http, probe, done, trusted=()):
         session.allow_tls_certificate_for_host(certificate, host)
     view = WebKit.WebView(network_session=session, vexpand=True)
     key = origin(server_url)
+    allowed = certificate_hosts(server_url, certificate_hosts_extra)
     state = {"checking": False, "finished": False}
     page.view = view
 
     def on_authenticate(view, request):
         if request.get_scheme() != WebKit.AuthenticationScheme.CLIENT_CERTIFICATE_REQUESTED:
             return False    # basic auth and others: WebKit's own dialog
-        if http.certificate is None:
+        host = (request.get_host() or "").lower()
+        if http.certificate is None or host not in allowed:
+            if http.certificate is not None:
+                log.info("no client certificate for another host")
             request.cancel()
         else:
             request.authenticate(WebKit.Credential.new_for_certificate(
@@ -182,12 +208,12 @@ def make_page(server_url, login_url, http, probe, done, trusted=()):
     header.pack_end(reload_button)
     toolbar.add_top_bar(header)
     page.set_child(toolbar)
-    view.load_uri(login_url or server_url)
+    view.load_uri(start_url(server_url, login_url))
     return page
 
 
 def sign_in(nav, router, http, jar, probe, url="", trusted=(), done=None,
-            on_basic=None):
+            on_basic=None, certificate_hosts_extra=()):
     """Push the login page onto `nav` (an Adw.NavigationView) for the
     router's current or first address; on success store the cookies in
     `jar`, resolve the route again and call done(). `probe(http, url,
@@ -223,7 +249,8 @@ def sign_in(nav, router, http, jar, probe, url="", trusted=(), done=None,
         if done:
             done()
 
-    page = make_page(server, url or server, http, probe, finished, trusted)
+    page = make_page(server, url or server, http, probe, finished, trusted,
+                     certificate_hosts_extra)
     nav.push(page)
     return page
 

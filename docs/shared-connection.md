@@ -191,8 +191,14 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
   (`unauthorized()`).
 - **Login** (`make_page`, `sign_in`): an `AdwNavigationPage` with a
   WebKitGTK 6 web view in an ephemeral network session opens the
-  address. WebKit's client-certificate request is answered with the app's
-  certificate, so mutual TLS works there too. After each page load the
+  refused address without user info, query and fragment (`page_url`,
+  `start_url`; a query can carry tokens, and the proxy passes the address
+  on to its identity provider), or the server's address if the refused
+  one is on another origin. WebKit's client-certificate request is
+  answered with the app's certificate only for the server's host and the
+  hosts in `certificate_hosts_extra` (e.g. an identity provider behind
+  the same mutual TLS); other hosts get none, so mutual TLS works there
+  without handing the certificate to every host on the way. After each page load the
   cookies for the server's origin are tried with the app's probe in a
   separate client; once the server answers, the page reports them.
 - **Session**: `CookieJar` keeps `{origin: "name=value; …"}` in the app's

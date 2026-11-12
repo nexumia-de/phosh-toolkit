@@ -4,6 +4,7 @@ reused within a thread and no session is shared between threads.
 No GTK."""
 import base64
 import threading
+from urllib.parse import urlsplit
 
 import gi
 
@@ -40,7 +41,20 @@ class HttpError(Exception):
         return self.challenge.lower().startswith("basic")
 
 
+def page_url(url):
+    """`url` without user info, query and fragment: what may be shown or
+    opened in a login window. A query can carry credentials or tokens,
+    and the proxy passes the address on to its identity provider."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    port = f":{parts.port}" if parts.port else ""
+    return f"{parts.scheme}://{host}{port}{parts.path}"
+
+
 def proxy_login(url, challenge=""):
+    url = page_url(url)
     if challenge.lower().startswith("basic"):
         return HttpError(PROXY_LOGIN, "The proxy in front of the server asks "
                          "for its user name and password", url=url,
