@@ -181,6 +181,58 @@ def test_login_page_signs_in_through_mutual_tls(mtls_proxied, pki, trust):
     assert http.cookies == {}       # the app's client is left alone
 
 
+def _load_through_redirect(server, mtls_server, pki, trust, extra):
+    """Open the web view on `server` as http://localhost:…, which redirects
+    to the mutual-TLS server at 127.0.0.1 (another host, like an identity
+    provider); return once the load has finished or failed."""
+    import gi
+    gi.require_version("Adw", "1")
+    gi.require_version("WebKit", "6.0")
+    from gi.repository import Adw, WebKit
+    Adw.init()
+    http = Client(UA)
+    http.tls_database = trust
+    http.certificate = tls.load((pki / "client.p12").read_bytes(), P12_PASSWORD)
+    server_cert = Gio.TlsCertificate.new_from_file(str(pki / "server.pem"))
+    server_url = server.url.replace("127.0.0.1", "localhost")
+    server.away_to = mtls_server.url + "/page"
+    page = proxy_login.make_page(
+        server_url, server_url + "/away", http,
+        info, lambda cookies: None, trusted=[(server_cert, "127.0.0.1")],
+        certificate_hosts_extra=extra)
+    ended = []
+    page.view.connect("load-failed", lambda *a: ended.append("failed"))
+    page.view.connect("load-changed", lambda v, e: e == WebKit.LoadEvent.FINISHED
+                      and ended.append("finished"))
+    nav = Adw.NavigationView()
+    nav.push(page)
+    run_until(lambda: ended, 30)
+    _KEEP.append(nav)
+    return page
+
+
+# Web views stay alive until the process ends: finalizing one while the
+# next one loads crashed WebKitGTK 2.52 here.
+_KEEP = []
+
+
+@needs_webkit
+def test_web_view_gives_no_certificate_to_another_host(
+        server, mtls_server, pki, trust):
+    _load_through_redirect(server, mtls_server, pki, trust, ())
+    assert "/away" in [p for _, p, _ in server.requests]
+    # The certificate request of 127.0.0.1 was cancelled: the handshake
+    # failed, so the mutual-TLS server never saw a request.
+    assert mtls_server.requests == []
+
+
+@needs_webkit
+def test_web_view_gives_the_certificate_to_extra_hosts(
+        server, mtls_server, pki, trust):
+    _load_through_redirect(server, mtls_server, pki, trust, ["127.0.0.1"])
+    assert [p for _, p, _ in mtls_server.requests] == ["/page"]
+
+
 # --- HTTP Basic auth at the proxy (Pangolin's header authentication) ---
 
 

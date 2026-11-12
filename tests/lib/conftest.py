@@ -23,7 +23,9 @@ class FakeServer:
     """GET /info answers {"id": server_id}; /media serves MEDIA with
     ranges; /private needs "Authorization: Bearer good" (else 401); /nginx
     answers like nginx without a client certificate; /page is a web page;
-/redirect?status=302&to=URL redirects to URL; /loop redirects to itself.
+/redirect?status=302&to=URL redirects to URL; /away redirects to the
+    attribute away_to (no query, for the web view); /loop redirects to
+    itself.
 
     With login=True it behaves like a reverse proxy with its own login
     (Pangolin, Authelia, …): without the cookie "proxy-session=ok" a
@@ -42,6 +44,7 @@ class FakeServer:
         self.requests = []
         self.login = False
         self.basic = None
+        self.away_to = None
         self.media_rate = 0     # bytes per second for /media; 0 is fast
         self.bodies = []      # of POST, PUT, PATCH and DELETE requests
         owner = self
@@ -159,6 +162,11 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/loop":
             self.send_response(302)
             self.send_header("Location", "/loop")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif path == "/away":
+            self.send_response(302)
+            self.send_header("Location", owner.away_to)
             self.send_header("Content-Length", "0")
             self.end_headers()
         elif path == "/redirect":
