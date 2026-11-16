@@ -1,0 +1,37 @@
+# Tags a toolkit release v<major>.<minor>.<patch> on the current main.
+# Apps pin lib/phosh_toolkit to such a tag (docs/toolkit-usage.md, 3c).
+# Run it from the Actions tab or the API after the changes are merged.
+name: Tag release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version without the v, e.g. 0.4.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Create tag on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like 1.2.3, got '$VERSION'"
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "::error::tag v$VERSION exists already"
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f "ref=refs/tags/v$VERSION" -f "sha=$GITHUB_SHA" >/dev/null
+          echo "Tagged v$VERSION at $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

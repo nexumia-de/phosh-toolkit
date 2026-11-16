@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-16
+* **Update**: [Toolkit usage](toolkit-usage.md#3c-shared-python-package): the manual workflow *Tag release* tags a toolkit version on the current `main`, so a release does not need a local `git push` of the tag.
+
 ## 2026-11-12
 * **Update**: [Shared connection](shared-connection.md#proxy-login-proxy_login), #47 review point 6: issues nexumia-de/ephyra#33 and nexumia-de/nauta#45 ask each app to pass `certificate_hosts_extra` from a setting when it bumps the toolkit pin, so identity providers on another host behind the same mutual TLS keep working.
 * **Fix**: [Shared connection](shared-connection.md#addresses-in-log-lines), #47 review point 5: other log lines still printed addresses: `HttpError` "Invalid address" had the full URL, the router logged route URLs with user info, the media proxy's error lines and GStreamer's error debug text (`Media`) held the proxy secret and the query. They now go through `page_url()` or `redact()`, which moved to its own module `redact` (no libsoup for `media`). Four tests in `tests/lib/test_connection.py` and `tests/lib/test_media.py`.
