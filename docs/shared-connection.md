@@ -219,17 +219,28 @@ the proxy login switched off everything worked (nexumia-de/phosh-toolkit#28).
   without handing the certificate to every host on the way (tests
   `test_web_view_gives_no_certificate_to_another_host`,
   `test_web_view_gives_the_certificate_to_extra_hosts`: a login page on
-  `localhost` redirects to a mutual-TLS host `127.0.0.1`). Apps must
-  pass `certificate_hosts_extra` from a setting when they adopt this, or
-  a login whose identity provider is on another host behind the same
-  mutual TLS fails: nexumia-de/ephyra#33, nexumia-de/nauta#45. After each page load the
+  `localhost` redirects to a mutual-TLS host `127.0.0.1`). The extra
+  hosts are `account.certificate_hosts`, edited in the connection form
+  (below); apps pass the same list to `sign_in()`, or a login whose
+  identity provider is on another host behind the same mutual TLS
+  fails: nexumia-de/ephyra#33, nexumia-de/nauta#45. After each page load the
   cookies for the server's origin are tried with the app's probe in a
   separate client; once the server answers, the page reports them.
 - **Session**: `CookieJar` keeps `{origin: "name=value; …"}` in the app's
   keyring (kind `proxy-cookies`); `http.Client.cookies` sends them only to
   that origin, also for the media proxy's upstream requests.
 - The connection form shows the login page when its check meets a proxy
-  login and checks again afterwards; `apply()` stores the cookies. Apps
+  login and checks again afterwards; `apply()` stores the cookies. It
+  also owns the hosts: "Other Certificate Hosts" (an expander in the
+  server group, shown while a certificate is chosen or saved) is filled
+  from `account.certificate_hosts`, parsed with `parse_hosts()` (commas
+  or spaces, addresses reduced to their host, lower case), passed to
+  `make_page` and written back by `apply()`, so the first connect from
+  the setup page works too (#52, test
+  `test_proxy_login_gets_the_other_certificate_hosts`;
+  [decision](decisions/certificate-hosts-in-form.md)). Apps add
+  `certificate_hosts: list` to their account settings; an account
+  without it starts with an empty field. Apps
   connect the router's `proxy-login` signal to `sign_in()`, so an expired
   session opens the login page again.
 - Not covered yet: static access-token headers (Pangolin's access
