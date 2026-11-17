@@ -13,6 +13,7 @@ authentication) need no web view: ProxyCredentials keeps user name and
 password per origin in the keyring for http.Client.proxy_auth."""
 import json
 import logging
+import re
 from urllib.parse import urlsplit
 
 import gi
@@ -108,6 +109,22 @@ def certificate_hosts(server_url, extra=()):
     hosts = {(urlsplit(server_url).hostname or "").lower()}
     hosts.update(h.lower() for h in extra)
     hosts.discard("")
+    return hosts
+
+
+def parse_hosts(text):
+    """Host names from text the user typed: separated by commas or
+    spaces, addresses reduced to their host, lower case, no duplicates."""
+    hosts = []
+    for word in re.split(r"[\s,]+", text):
+        if not word:
+            continue
+        try:
+            host = urlsplit(word if "//" in word else "//" + word).hostname
+        except ValueError:
+            continue
+        if host and host not in hosts:
+            hosts.append(host)
     return hosts
 
 

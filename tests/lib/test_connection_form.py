@@ -131,6 +131,35 @@ def test_proxy_login_from_the_form(form, pki):
         server.stop()
 
 
+def test_proxy_login_gets_the_other_certificate_hosts(form, monkeypatch):
+    """The setup's login page hands the certificate to the hosts typed
+    into "Other Certificate Hosts", and apply() keeps them
+    (nexumia-de/phosh-toolkit#52)."""
+    from phosh_toolkit import proxy_login
+    from phosh_toolkit.http import PROXY_LOGIN
+    calls = []
+
+    def make_page(*args, **kwargs):
+        calls.append(kwargs)
+        return Adw.NavigationPage(title="Login")
+
+    monkeypatch.setattr(proxy_login, "available", lambda: True)
+    monkeypatch.setattr(proxy_login, "make_page", make_page)
+    form.window.nav = Adw.NavigationView()
+    form.window.nav.push(Adw.NavigationPage(title="Setup", tag="setup"))
+    assert not form.hosts.get_visible()
+    form.choose_data(b"-----BEGIN CERTIFICATE-----", "client.pem")
+    assert form.hosts.get_visible()
+    form.hosts_entry.set_text("Auth.Example.org, https://id.example.net/x auth.example.org")
+    error = HttpError(PROXY_LOGIN, "login", url="https://cloud.example.org/login")
+    assert form._proxy_login(error, None, "https://cloud.example.org", lambda *a: None)
+    assert calls[0]["certificate_hosts_extra"] == ["auth.example.org", "id.example.net"]
+    form.remote.set_text("https://cloud.example.org")
+    form.certificate_data = None
+    form.apply(form.account)
+    assert form.account.certificate_hosts == ["auth.example.org", "id.example.net"]
+
+
 def test_proxy_basic_fields(tmp_path, monkeypatch, trust):
     """With proxy_basic the form asks for the proxy's user name and
     password when the proxy challenges, and keeps them in the keyring."""

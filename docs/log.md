@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-17
+* **Fix**: [Shared connection](shared-connection.md#proxy-login-proxy_login), #52: `ConnectionForm` showed the proxy login without `certificate_hosts_extra`, so on the setup page an identity provider on another host behind the same mutual TLS got no certificate. The form now owns "Other Certificate Hosts" (`account.certificate_hosts`, `proxy_login.parse_hosts()`) and passes them to `make_page`; [decision](decisions/certificate-hosts-in-form.md). Tests `test_proxy_login_gets_the_other_certificate_hosts`, `test_parse_hosts`.
+
 ## 2026-11-16
 * **Update**: [Flatpak workflow](flatpak-workflow.md#ci-build-x86_64-and-aarch64): input `build-timeout-minutes` (default 30) for apps whose build takes longer; Nuntius (Fractal, Rust) took 25–32 minutes with a warm cache (nexumia-de/nuntius#3).
 * **Update**: [Toolkit usage](toolkit-usage.md#3c-shared-python-package): the manual workflow *Tag release* tags a toolkit version on the current `main`, so a release does not need a local `git push` of the tag.

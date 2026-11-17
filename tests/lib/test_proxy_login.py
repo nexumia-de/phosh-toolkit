@@ -334,3 +334,10 @@ def test_certificate_only_for_the_servers_host():
     assert proxy_login.certificate_hosts(
         "https://media.example.org", ["Auth.Example.org"]) == \
         {"media.example.org", "auth.example.org"}
+
+
+def test_parse_hosts():
+    assert proxy_login.parse_hosts(
+        " Auth.Example.org,https://id.example.net:8443/login  auth.example.org,,"
+        " http://[::1]/ bad[") == ["auth.example.org", "id.example.net", "::1"]
+    assert proxy_login.parse_hosts("") == []
