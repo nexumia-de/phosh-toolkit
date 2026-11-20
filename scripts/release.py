@@ -73,6 +73,8 @@ SCHEMES = ("light", "dark")
 # ones are still taken, for review and as release assets.
 LISTED = (("phone", "light"), ("desktop", "light"))
 SCREENSHOT_SH = Path(__file__).resolve().parent / "screenshot.sh"
+# Tries per screenshot before the build fails (run_shot).
+SHOT_ATTEMPTS = 3
 
 
 class ReleaseError(Exception):
@@ -285,9 +287,24 @@ def take_screenshots(config, out, command):
                 for action in shot.get("actions", []):
                     args += ["-a", action]
                 print(f"{path.name}: {shot['caption']}", flush=True)
-                subprocess.run(args + ["--"] + command, check=True)
+                run_shot(args + ["--"] + command)
                 taken.append(path)
     return taken
+
+
+def run_shot(args, attempts=SHOT_ATTEMPTS, run=subprocess.run):
+    """Take one screenshot, again when it fails: gtk4-broadwayd aborts
+    now and then (docs/screenshot-testing.md, known limits), and one lost
+    shot must not fail a release build. The last failure is raised."""
+    for attempt in range(1, attempts + 1):
+        try:
+            run(args, check=True)
+            return attempt
+        except subprocess.CalledProcessError:
+            if attempt == attempts:
+                raise
+            print(f"Screenshot failed (attempt {attempt} of {attempts}), trying again.",
+                  flush=True)
 
 
 def check_listed(metainfo_text, out):

@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-20
+* **Fix**: [Screenshot testing](screenshot-testing.md#known-limits-broadwayd-aborts-now-and-then): `gtk4-broadwayd` aborted during one of 20 release screenshots in two of three runs of Pensum 0.3.0, which ended its tag build. `scripts/release.py` takes a failed screenshot again, up to three times (`run_shot`); tests cover a shot that recovers and one that keeps failing.
+
 ## 2026-11-17
 * **Fix**: [Shared connection](shared-connection.md#proxy-login-proxy_login), #52: `ConnectionForm` showed the proxy login without `certificate_hosts_extra`, so on the setup page an identity provider on another host behind the same mutual TLS got no certificate. The form now owns "Other Certificate Hosts" (`account.certificate_hosts`, `proxy_login.parse_hosts()`) and passes them to `make_page`; [decision](decisions/certificate-hosts-in-form.md). Tests `test_proxy_login_gets_the_other_certificate_hosts`, `test_parse_hosts`.
 
