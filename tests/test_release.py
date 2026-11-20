@@ -204,3 +204,23 @@ def test_flathub_manifest_not_applicable_without_dir_source(tmp_path):
         {"name": "app", "sources": [{"type": "file", "path": "app.py"}]}]}))
     assert release.main(["flathub-manifest", str(path), "--url", "u", "--tag",
                          "v1", "--commit", "0" * 40]) == 3
+
+
+def test_a_failed_screenshot_is_taken_again(capsys):
+    calls = []
+
+    def run(args, check):
+        calls.append(args)
+        if len(calls) < 3:
+            raise subprocess.CalledProcessError(1, args)
+
+    assert release.run_shot(["shot"], run=run) == 3
+    assert "attempt 2 of 3" in capsys.readouterr().out
+
+
+def test_a_screenshot_that_keeps_failing_fails_the_build():
+    def run(args, check):
+        raise subprocess.CalledProcessError(1, args)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        release.run_shot(["shot"], run=run)

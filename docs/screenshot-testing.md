@@ -130,6 +130,20 @@ Found with Cirro on 2026-10-27, running the app from
   12. Avoid store shots of lists with repeated icons until GTK fixes
   this. Real devices use Wayland and are not affected.
 
+# Known limits: broadwayd aborts now and then
+
+Found with Pensum on 2026-11-20: in two of three Flatpak runs of the
+same code one of the 20 release screenshots failed, each time another
+one (`project-desktop-light`, `lists-desktop-dark`), with
+`gtk4-broadwayd` aborted (core dumped) and "App exited before its
+window was shown"; the third run took all 20. The pages were ones that
+had passed for weeks, so this is the server, not a widget. One of the
+two aborts ended the tag build of a release, so nothing was published.
+
+`scripts/release.py` therefore takes a failed screenshot again, up to
+`SHOT_ATTEMPTS` (3) times, and fails the build only when all of them
+fail (`run_shot`). A page that fails every time is still found.
+
 # Known limits: pill buttons and reveal animations (GNOME 51)
 
 Found with Pensum on 2026-11-05, reproduced locally with the app's
