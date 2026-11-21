@@ -50,6 +50,9 @@ class Keyring:
             Secret.password_store_sync(self._schema, {"kind": kind},
                                        Secret.COLLECTION_DEFAULT,
                                        self.labels.get(kind, kind), value, None)
+            # A copy from an earlier failed store would shadow this and
+            # every later value.
+            self._memory.pop(kind, None)
         except Exception as e:  # GLib.Error: no keyring daemon, locked, …
             log.warning("keyring: %s; keeping %s in memory", e, kind)
             self._memory[kind] = value

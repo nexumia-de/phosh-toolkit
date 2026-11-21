@@ -8,6 +8,7 @@ this proxy asks the app where that path lives (current server address,
 credentials as header or query) and forwards the request with the client
 certificate, streaming the answer back. Range requests pass through, so
 seeking works. No GTK."""
+import hmac
 import logging
 import secrets
 import threading
@@ -114,6 +115,10 @@ class _Handler(BaseHTTPRequestHandler):
         # loopback relay, and a query may hold credentials.
         log.debug(fmt, *(redact(a, self.owner.secret) for a in args))
 
+    def _bad_gateway(self, text):
+        # As the body: the status line takes Latin-1 only.
+        self.send_error(502, explain=text)
+
     def do_HEAD(self):
         self._forward("HEAD")
 
@@ -122,14 +127,17 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _forward(self, method):
         prefix = f"/{self.owner.secret}/"
-        if not self.path.startswith(prefix):
+        # compare_digest: the time taken tells nothing about the secret.
+        if not hmac.compare_digest(self.path[:len(prefix)].encode(),
+                                   prefix.encode()):
             self.send_error(404)
             return
         try:
             client, url, extra, *body = self.owner.forward(self.path[len(prefix) - 1:])
         except Exception as e:  # not signed in, no route
-            log.info("proxy: %s", redact(str(e), self.owner.secret))
-            self.send_error(502, str(e))
+            text = redact(str(e), self.owner.secret)
+            log.info("proxy: %s", text)
+            self._bad_gateway(text)
             return
         # identity: libsoup would decode a compressed body, which would
         # then no longer match the Content-Length passed on.
@@ -143,8 +151,9 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 status, upstream, stream = client.open(method, url, headers)
         except HttpError as e:
-            log.info("proxy: %s", redact(str(e), self.owner.secret))
-            self.send_error(502, str(e))
+            text = redact(str(e), self.owner.secret)
+            log.info("proxy: %s", text)
+            self._bad_gateway(text)
             return
         self.send_response(status)
         length_known = False

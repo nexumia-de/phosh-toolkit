@@ -25,6 +25,17 @@ def test_normalize_rejects(text):
         normalize(text)
 
 
+@pytest.mark.parametrize("text", ["https://robin:pw@media.example.org",
+                                  "robin@media.example.org",
+                                  "http://:pw@192.168.1.5:8096"])
+def test_normalize_rejects_user_info(text):
+    """A user name or password in the address would be saved in the
+    account file and sent with every request."""
+    with pytest.raises(AddressError) as e:
+        normalize(text)
+    assert "pw" not in str(e.value) and "robin" not in str(e.value)
+
+
 LOCAL_URL = "http://192.168.1.5:8096"
 REMOTE_URL = "https://media.example.org"
 

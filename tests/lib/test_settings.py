@@ -1,3 +1,5 @@
+import os
+import stat
 from dataclasses import dataclass, field
 
 from phosh_toolkit.settings import JsonStore, app_dir
@@ -29,3 +31,22 @@ def test_broken_file_is_kept(tmp_path):
     store.path.write_text("{broken")
     assert store.load() == Account()
     assert (tmp_path / "account.bad").read_text() == "{broken"
+
+
+def test_account_file_is_private(tmp_path):
+    """The file names addresses and user names: readable by the user
+    only, whatever the umask; a file of an older version is tightened
+    when it is read."""
+    path = tmp_path / "app" / "account.json"
+    store = JsonStore(path, Account)
+    old = os.umask(0o022)
+    try:
+        store.save(Account())
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        path.chmod(0o644)
+        store.load()
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        store.save(Account())
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    finally:
+        os.umask(old)

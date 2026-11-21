@@ -37,6 +37,7 @@ links between concepts. Change history is in [log.md](log.md).
 # Shared code
 
 * [Shared connection and playback](shared-connection.md) - The `phosh_toolkit` Python package: HTTP with client certificates, home/local and remote route with server id check, keyring, connection form, media proxy and playbin player, image cache.
+* [Security review of phosh_toolkit](security-review.md) - Findings of the 2026-11 review of the shared package with severity, fix and test, what stays open and what apps adopt with the pin bump.
 
 # Decision records
 
