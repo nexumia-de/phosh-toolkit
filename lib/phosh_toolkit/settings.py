@@ -21,7 +21,8 @@ def app_dir(kind, app):
 class JsonStore:
     """Loads and saves a dataclass `cls` as {"version": …, "account": …}.
     Unknown keys are dropped; a broken file is kept as .bad and a fresh
-    object returned."""
+    object returned. The file is readable by the user only (mode 600): it
+    holds no secrets, but addresses and user names."""
 
     def __init__(self, path, cls, version=1):
         self.path = Path(path)
@@ -29,6 +30,11 @@ class JsonStore:
         self.version = version
 
     def load(self):
+        try:
+            # Files of versions that wrote with the default umask.
+            os.chmod(self.path, 0o600)
+        except OSError:
+            pass
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -44,7 +50,11 @@ class JsonStore:
     def save(self, obj):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"version": self.version,
-                                   "account": asdict(obj)}, indent=1),
-                       encoding="utf-8")
+        text = json.dumps({"version": self.version, "account": asdict(obj)},
+                          indent=1)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            # A .tmp left behind by an older version keeps its mode.
+            os.fchmod(fd, 0o600)
+            f.write(text)
         tmp.replace(self.path)

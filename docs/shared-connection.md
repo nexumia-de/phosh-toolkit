@@ -54,11 +54,11 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `http` | no | `Client(user_agent)`: libsoup 3, one session per worker thread, optional `certificate` and `tls_database`, `open()` streams an answer (also for a `POST` body); errors as `HttpError` with `kind` `network`, `tls`, `certificate-required`, `auth` (401), `server` |
 | `redirects` | no | Redirect rules of `http.Client` (`next_hop`, `carried_headers`) and `origin(url)`, the key of the per-origin headers |
 | `tls` | no | `load(data, password)` for PKCS #12 or PEM with key, `describe(cert)` |
-| `route` | no | `normalize(text)` (no scheme → `https://`), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
+| `route` | no | `normalize(text)` (no scheme → `https://`; user info is refused), `candidates(remote, local, home_networks, ssids)`, probe `TIMEOUT` |
 | `network` | no | `current_ssids()` from NetworkManager, `Watcher` ("changed", debounced 1.5 s, from GLib's network monitor and NetworkManager's signals) |
 | `router` | no | `Router`: base class of an app's connection (state, `base_url`, `resolve()`, `call()`); `probe_addresses()` for setup |
-| `settings` | no | `app_dir(kind, app)` for the XDG directories, `JsonStore(path, cls, version)` for the account file |
-| `keyring` | no | `Keyring(schema, labels, memory_env)`: libsecret, memory fallback |
+| `settings` | no | `app_dir(kind, app)` for the XDG directories, `JsonStore(path, cls, version)` for the account file (mode 600) |
+| `keyring` | no | `Keyring(schema, labels, memory_env)`: libsecret, memory fallback (a copy kept after a failed store goes with the next store the keyring takes) |
 | `certificate` | no | `CertificateFile(path, keyring)`: private copy (mode 600), password in the keyring |
 | `proxy` | no | `MediaProxy(forward)`: local HTTP proxy for GStreamer |
 | `media` | no | `Media(uri, video=True, audio_position=None)`: `playbin3` with a `GtkMediaStream`-like API, audio track choice, no subtitles |
@@ -145,6 +145,18 @@ the server id check keeps safe.
 - Every request sets it with `soup_message_set_tls_client_certificate`
   before sending[^soup-cert], so libsoup presents it when the server
   asks, the local address included.
+- **Only to the host the app asked.** A redirect to another host gets
+  the certificate only if that host is in `Client.certificate_hosts`
+  (lower-case host names, empty by default). Otherwise an answer nobody
+  signed for, e.g. from a plain `http` local address on a strange
+  network, could make the app identify itself to a host of its choosing.
+  Apps set it to the hosts of both addresses plus the user's other
+  certificate hosts:
+  `proxy_login.certificate_hosts(remote, extra) | proxy_login.certificate_hosts(local)`;
+  `ConnectionForm` does so for its own client. When a host outside the
+  list asks for the certificate, the request ends as `proxy-login` for
+  the address the app asked, so the login window opens (it has its own
+  host list). Test `test_client_certificate_stays_with_the_requested_host`.
 - **Missing certificate**, recognised in three forms: GIO's
   `CERTIFICATE_REQUIRED`; with TLS 1.3 a received alert "Certificate is
   required" (the handshake completes before the server checks); and
@@ -316,6 +328,12 @@ writes the addresses and keeps or deletes the certificate. The account
 object needs `remote_url`, `local_url`, `home_networks` and
 `certificate`.
 
+An address with a user name or password (`https://user:pw@host`) is
+refused (`route.normalize`): it would be saved in the account file and
+shown in the form. `apply()` forgets the proxy's Basic credentials and
+session cookies of every origin that is no longer the remote or local
+address, also when the remote address is only cleared.
+
 # Media proxy and player (`proxy`, `media`)
 
 GStreamer's HTTP source and HLS downloader can't present a client
@@ -325,8 +343,9 @@ The player opens `http://127.0.0.1:<port>/<secret>/<server path>`:
 - a `ThreadingHTTPServer` on 127.0.0.1, random port, random path secret
   (other local programs can't use it); its request log replaces the
   secret and every query with `…` (`redact`), since the secret is the
-  relay's only guard; so do its error lines and `Media`'s log lines
-  (GStreamer's debug text of an HTTP error holds the whole URL);
+  relay's only guard; so do its error lines, the body of its 502
+  answer and `Media`'s log lines (GStreamer's debug text of an HTTP
+  error holds the whole URL). The secret is compared in constant time;
 - the app's `forward(path)` returns the client, the upstream URL on the
   current route and the headers, so each app adds its own credentials
   (Jellyfin: `Authorization` header). A fourth item, a form body, sends
@@ -371,6 +390,18 @@ phone, 2026-11-04). `video=False` plays sound only.
   address there; a stranger's server fails the server id check, but one
   that fakes the public server answer could still receive credentials.
   Prefer an `https` local address, or leave the home list empty.
+- Strict mode (`strict_local`) trusts the Wi-Fi name alone: a network
+  with the same name gets the credentials.
+- A typed `http://` is kept for the remote address too (some reach
+  their server through a VPN). Then everything, credentials included,
+  crosses the network unencrypted; the form does not warn yet
+  (nexumia-de/phosh-toolkit#45, finding 5).
+- Errors are told apart by text where libsoup and GnuTLS give nothing
+  better (`http.classify`, `is_certificate_page`): a server can choose
+  which message the user sees, not what the app sends.
+- The account file is mode 600; it holds addresses and user names, no
+  secrets. Findings and fixes of the review:
+  [security review](security-review.md).
 
 # Verified (2026-11-04, cloud container, Ubuntu 24.04, libsoup 3.4.4, GLib 2.80, GStreamer 1.24)
 

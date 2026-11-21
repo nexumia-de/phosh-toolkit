@@ -25,6 +25,14 @@ def origin(url):
     return f"{parts.scheme}://{(parts.hostname or '').lower()}:{port}"
 
 
+def host(url):
+    """The lower-case host name of a URL, "" without one."""
+    try:
+        return (urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
 def next_hop(method, url, status, location):
     """(method, url) of the request a redirect asks for, or None if the
     client hands the redirect to the caller, as libsoup does. Followed:

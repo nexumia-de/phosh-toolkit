@@ -212,6 +212,21 @@ def test_proxy_basic_fields(tmp_path, monkeypatch, trust):
         again.proxy_user.set_text("")
         again.apply(account)
         assert creds.load() == {}
+        # Credentials and the proxy's session go with the address they
+        # belong to, also when the remote address is only cleared.
+        creds.set(server.url, "phone", "s3cret")
+        gone = connection_form.ConnectionForm(
+            window, account, CertificateFile(tmp_path / "cert", keyring), probe,
+            "Test/1.0", server_description="Where", home_description="Home",
+            proxy_basic=True)
+        gone.proxy_cookies = {origin(server.url): "proxy-session=ok",
+                              "https://192.168.1.5:443": "proxy-session=home"}
+        gone.remote.set_text("")
+        gone.local.set_text("https://192.168.1.5")
+        gone.apply(account)
+        assert creds.load() == {}
+        assert proxy_login.CookieJar(keyring).load() == {
+            "https://192.168.1.5:443": "proxy-session=home"}
         # Without proxy_basic there are no such rows.
         plain = connection_form.ConnectionForm(
             window, account, CertificateFile(tmp_path / "cert", keyring), probe,
