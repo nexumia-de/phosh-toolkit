@@ -114,6 +114,22 @@ workflows.[^gh-token] The release workflow therefore needs the secret
 requests** read/write on the app repository; without it the jobs fail
 with a message (a tag can always be pushed by hand).
 
+# Several apps in one repository
+
+A repository that holds several apps (suitably/domus: Emptio, Mixtura,
+Culina) gives each app its own `release.toml` next to its metainfo,
+with its own `changelog.d/` and a `tag-prefix` (`tag-prefix =
+"emptio-v"`; default `v`). The tag is `<tag-prefix><version>`
+(`release.py tag <version>`), the release branch `release/<tag>` and the
+pull request "Release <tag>", so the apps release on their own. The
+caller runs the reusable workflow once per app with `release-config:
+apps/emptio/packages/linux/release.toml` and so on. In *Changelog*,
+paths outside the `release.toml`'s directory need no fragment of that
+app; a change to code the app imports from elsewhere in the repository
+therefore asks for no fragment, and its author adds one by hand when
+users notice it. phosh-apps publishes each app from a line
+`owner/repo <tag-prefix>*` in `apps.txt`.
+
 # Nightly app
 
 The nightly build runs `release.py devel` before building: the metainfo

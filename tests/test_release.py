@@ -105,6 +105,29 @@ def test_check_requires_fragment_for_code_changes(app, tmp_path):
     assert run(app, "check", "--changed", str(changed)) == 0
 
 
+def test_check_ignores_paths_outside_the_app(app, tmp_path):
+    # A release.toml in a part of a repository with several apps: a change
+    # to another part needs no fragment of this app.
+    changed = tmp_path / "changed.txt"
+    changed.write_text("../other/app.py\n../../package.json\n")
+    assert run(app, "check", "--changed", str(changed)) == 0
+    changed.write_text("../other/app.py\napp.py\n")
+    assert run(app, "check", "--changed", str(changed)) == 1
+
+
+def test_tag_prefix(app, capsys):
+    assert run(app, "tag", "0.2.0") == 0
+    assert capsys.readouterr().out == "v0.2.0\n"
+    with (app / "release.toml").open("a") as f:
+        f.write('tag-prefix = "emptio-v"\n[[screenshots.shot]]\nname = "main"\ncaption = "Main"\n')
+    assert run(app, "tag", "0.2.0") == 0
+    assert capsys.readouterr().out == "emptio-v0.2.0\n"
+    fragment(app, "x.fix.md", "X.\n")
+    assert run(app, "prepare", "--repo", "owner/app") == 0
+    root = ET.parse(app / "app.metainfo.xml").getroot()
+    assert "/releases/download/emptio-v0.1.1/" in root.find("screenshots/screenshot/image").text
+
+
 def test_devel_release_for_nightly(app, capsys):
     fragment(app, "x.feature.md", "X.\n")
     assert run(app, "devel", "--suffix", "20261101.abc1234",
