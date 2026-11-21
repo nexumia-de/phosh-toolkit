@@ -6,6 +6,7 @@ Reads `release.toml` in the app repository root:
     metainfo = "data/de.nexumia.MyApp.metainfo.xml"
     version-files = ["meson.build", "myapp/__init__.py"]
     fragments = "changelog.d"          # default
+    tag-prefix = "v"                   # default; the tag is <prefix><version>
 
     [screenshots]                      # optional
     env = { MYAPP_DEMO = "{root}/tests/data/demo" }
@@ -29,6 +30,7 @@ Commands:
                                            the release, delete the fragments
     release.py notes VERSION               release notes as Markdown
     release.py latest [--metainfo FILE]    newest stable release version
+    release.py tag VERSION                 the release's tag, <tag-prefix><version>
     release.py devel --suffix S            add a development <release> with the
                                            pending fragments (nightly builds)
     release.py screenshots --out DIR [--check-metainfo FILE] -- COMMAND...
@@ -95,6 +97,9 @@ class Config:
             data = tomllib.load(f)
         self.metainfo = self.root / data["metainfo"]
         self.version_files = [self.root / p for p in data.get("version-files", [])]
+        # Several apps in one repository tell their tags apart by the prefix
+        # (e.g. "emptio-v"); one app per repository keeps "v".
+        self.tag_prefix = data.get("tag-prefix", "v")
         self.fragments = self.root / data.get("fragments", "changelog.d")
         screenshots = data.get("screenshots", {})
         self.shots = screenshots.get("shot", [])
@@ -144,9 +149,11 @@ def fragments(config):
 
 
 def needs_fragment(changed, fragment_dir):
-    """True if a pull request that changed these paths needs a fragment."""
+    """True if a pull request that changed these paths needs a fragment.
+    Paths are relative to the release.toml's directory; those outside it
+    ("../...") belong to another part of the repository."""
     prefix = fragment_dir.rstrip("/") + "/"
-    return any(not path.startswith(prefix)
+    return any(not path.startswith(prefix) and not path.startswith("../")
                and not any(fnmatch.fnmatch(path, g) for g in EXEMPT)
                for path in changed)
 
@@ -384,7 +391,7 @@ def cmd_prepare(config, args):
     if config.shots:
         if not args.repo:
             raise ReleaseError("--repo is needed for the screenshot URLs")
-        base = f"https://github.com/{args.repo}/releases/download/v{version}/"
+        base = f"https://github.com/{args.repo}/releases/download/{config.tag_prefix}{version}/"
         text = replace_screenshots(text, config.shots, base)
     ET.fromstring(text)
     config.metainfo.write_text(text, encoding="utf-8")
@@ -401,6 +408,10 @@ def cmd_notes(config, args):
 def cmd_latest(config, args):
     path = Path(args.metainfo) if args.metainfo else config.metainfo
     print(latest_release(path.read_text(encoding="utf-8")))
+
+
+def cmd_tag(config, args):
+    print(config.tag_prefix + args.version)
 
 
 def cmd_devel(config, args):
@@ -461,6 +472,9 @@ def main(argv=None):
     p = sub.add_parser("latest")
     p.add_argument("--metainfo", help="read this file instead")
     p.set_defaults(func=cmd_latest)
+    p = sub.add_parser("tag")
+    p.add_argument("version")
+    p.set_defaults(func=cmd_tag)
     p = sub.add_parser("devel")
     p.add_argument("--suffix", required=True)
     p.add_argument("--date", default=today)
