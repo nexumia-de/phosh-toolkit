@@ -42,7 +42,13 @@ class ConnectionForm:
     - `proxy_basic` adds "Proxy Login" (user name and password of a
       proxy's HTTP Basic auth, such as Pangolin's header authentication),
       kept in the keyring for the remote address (ProxyCredentials). Only
-      for servers that don't use the Authorization header themselves."""
+      for servers that don't use the Authorization header themselves.
+    - `account.certificate_hosts` (optional, list of host names): hosts
+      besides the server's that the proxy's login page may hand the
+      client certificate to, e.g. an identity provider behind the same
+      mutual TLS. The form edits them under "Other Certificate Hosts"
+      and passes them to proxy_login.make_page(); apply() writes them
+      back. Apps pass the same list to proxy_login.sign_in()."""
 
     def __init__(self, window, account, certificates, probe, user_agent, *,
                  server_description, home_description, toast=None,
@@ -100,6 +106,19 @@ class ConnectionForm:
             self.proxy.add_row(self.proxy_password)
             self.proxy.set_expanded(bool(user))
             self.server.add(self.proxy)
+        # Hosts besides the server's that get the certificate in the
+        # proxy's login page (proxy_login.certificate_hosts).
+        hosts = list(getattr(account, "certificate_hosts", None) or ())
+        self.hosts = Adw.ExpanderRow(
+            title="Other Certificate Hosts",
+            subtitle="Only if the proxy's login page is on another host "
+                     "behind the same client certificate")
+        self.hosts_entry = Adw.EntryRow(title="Host Names, e.g. auth.example.org",
+                                        text=", ".join(hosts),
+                                        input_purpose=Gtk.InputPurpose.URL)
+        self.hosts.add_row(self.hosts_entry)
+        self.hosts.set_expanded(bool(hosts))
+        self.server.add(self.hosts)
         self._remote_at_start = account.remote_url
 
         self.home = Adw.PreferencesGroup(title="Home Network",
@@ -137,6 +156,7 @@ class ConnectionForm:
         needs_password = (self.certificate_data is not None
                           and not tls.is_pem(self.certificate_data))
         self.password.set_visible(needs_password)
+        self.hosts.set_visible(has)
 
     def _on_choose(self, *_):
         dialog = Gtk.FileDialog(title="Choose Client Certificate")
@@ -268,10 +288,16 @@ class ConnectionForm:
         return (self.proxy_user.get_text().strip(),
                 self.proxy_password.get_text())
 
+    def certificate_hosts(self):
+        """The other certificate hosts typed into the form."""
+        return proxy_login.parse_hosts(self.hosts_entry.get_text())
+
     def apply(self, account):
         """Write the form into `account` and keep the certificate."""
         account.remote_url, account.local_url = self.addresses()
         account.home_networks = list(self.networks)
+        account.certificate_hosts = self.certificate_hosts()
+        self.hosts_entry.set_text(", ".join(account.certificate_hosts))
         self.cookies.save(self.proxy_cookies)
         if self.proxy is not None:
             old = self._remote_at_start
@@ -371,7 +397,8 @@ class ConnectionForm:
         page = proxy_login.make_page(
             server, error.url or server, http,
             lambda client, url, timeout: self.probe(client)(url, timeout),
-            signed_in, self.trusted)
+            signed_in, self.trusted,
+            certificate_hosts_extra=self.certificate_hosts())
         page.connect("hidden", hidden)
         nav.push(page)
         return True

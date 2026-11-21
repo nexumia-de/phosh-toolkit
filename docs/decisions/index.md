@@ -17,4 +17,5 @@
 * [Lean agent rules](lean-agent-rules.md) - Shared rules split into core and GTK-app files, kept short, with a token budget; based on measured cost of context files.
 * [One accent colour per app](app-accent-colours.md) - Each app has its own accent; light/dark follow the system unless chosen in the app's preferences.
 * [HTTP Basic auth at the proxy](proxy-basic-auth.md) - Proxy user name and password kept in the keyring so the proxy login does not return; only for servers that leave the Authorization header alone; the security trade-off.
+* [The connection form owns the other certificate hosts](certificate-hosts-in-form.md) - "Other Certificate Hosts" in the shared form, not per app, so the setup page's proxy login hands the certificate to an identity provider behind the same mutual TLS.
 * [Code names and visible names](app-names.md) - Repository and app id keep a code name; users see a descriptive name; the agent suggests names, the owner chooses.

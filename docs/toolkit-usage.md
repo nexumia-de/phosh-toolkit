@@ -125,7 +125,10 @@ Runtime code that two apps need lives in `lib/phosh_toolkit/`
 ([code reuse](decisions/code-reuse.md)); what it contains is in
 [shared connection and playback](shared-connection.md). An app pulls it
 into its Flatpak as a module **before** the app module, pinned to a
-toolkit tag and its commit:
+toolkit tag and its commit. A new tag comes from the manual workflow
+*Tag release* (`.github/workflows/tag-release.yml`, input `version`
+such as `0.4.0`), which tags the current `main`; tags made by hand
+(`git tag v0.4.0 && git push origin v0.4.0`) work the same.
 
 ```yaml
 modules:

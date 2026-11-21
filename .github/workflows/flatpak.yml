@@ -91,6 +91,11 @@ on:
         required: false
         type: string
         default: release.toml
+      build-timeout-minutes:
+        description: Time limit of each build job; raise it for apps whose build takes longer (e.g. a large Rust app).
+        required: false
+        type: number
+        default: 30
       toolkit-ref:
         description: Ref of phosh-toolkit whose scripts the jobs use; keep it equal to the ref in "uses:".
         required: false
@@ -179,7 +184,7 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.build-timeout-minutes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -164,7 +164,7 @@ of the workspace, because a manifest's `type: dir` source copies the
 workspace into the build. Details: [releases](releases.md).
 
 Updates of the pinned sources come from the separate
-[update-check workflow](dependency-updates.md). The build job has `timeout-minutes: 30`; apt
+[update-check workflow](dependency-updates.md). The build job has `timeout-minutes: 30` (input `build-timeout-minutes`; Nuntius, a large Rust app, needs about 30 minutes with a warm cache and sets 120); apt
 runs with `DEBIAN_FRONTEND=noninteractive` passed through `sudo env` (sudo
 drops exported variables) and `-o DPkg::Lock::Timeout=120`. Slow runner
 mirrors happen: one run fetched 166 MB at 144 kB/s and took 19 minutes, so
