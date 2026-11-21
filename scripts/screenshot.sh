@@ -33,7 +33,8 @@
 #   scripts/screenshot.sh -c dark -a app.about -o about.png -- flatpak run de.nexumia.MyApp
 #
 # Requirements: gtk4-broadwayd (Ubuntu: libgtk-4-bin), dbus-daemon and gdbus,
-# and Node with the "playwright" package and a Chromium it can launch.
+# python3 (3.9 or later, for broadway_dedup.py next to this script), and
+# Node with the "playwright" package and a Chromium it can launch.
 set -euo pipefail
 
 out=screenshot.png
@@ -49,7 +50,7 @@ expose=()
 applog=
 maximize=1
 
-usage() { sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 while getopts "o:W:H:d:s:c:e:a:i:F:l:nh" opt; do
   case $opt in
@@ -83,6 +84,8 @@ esac
 
 command -v gtk4-broadwayd >/dev/null || { echo "gtk4-broadwayd not found (install libgtk-4-bin)" >&2; exit 1; }
 command -v node >/dev/null || { echo "node not found" >&2; exit 1; }
+command -v python3 >/dev/null || { echo "python3 not found" >&2; exit 1; }
+dedup=$(dirname "$(realpath "$0")")/broadway_dedup.py
 
 # Resolve playwright from the caller's directory (local node_modules),
 # NODE_PATH or the global npm root. The helper script runs from a temp dir,
@@ -127,6 +130,7 @@ cleanup() {
   for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done
   [[ -n $bus_pid ]] && kill "$bus_pid" 2>/dev/null
   wait 2>/dev/null || true
+  [[ -n ${app_socket:-} ]] && rm -f "$app_socket"
   rm -rf "$workdir"
 }
 trap cleanup EXIT
@@ -159,9 +163,39 @@ mkdir -p "$workdir/xdg/gtk-4.0"
 printf '[Settings]\ngtk-xft-dpi=98304\n' >"$workdir/xdg/gtk-4.0/settings.ini"
 
 gtk4-broadwayd --address 127.0.0.1 --port "$port" ":$display" >"$workdir/broadwayd.log" 2>&1 &
-pids+=($!)
+broadwayd_pid=$!
+pids+=("$broadwayd_pid")
+
+# Why a screenshot failed is mostly in the display server's output: print
+# it, and how the server ended if it is gone.
+report_broadwayd() {
+  local status=0
+  if kill -0 "$broadwayd_pid" 2>/dev/null; then
+    echo "gtk4-broadwayd is still running." >&2
+  else
+    wait "$broadwayd_pid" 2>/dev/null || status=$?
+    echo "gtk4-broadwayd exited with status $status$( ((status > 128)) && echo " (SIG$(kill -l $((status - 128))))")." >&2
+  fi
+  echo "gtk4-broadwayd log:" >&2
+  cat "$workdir/broadwayd.log" >&2
+  if [[ -s $workdir/dedup.log ]]; then
+    echo "broadway_dedup.py log:" >&2
+    cat "$workdir/dedup.log" >&2
+  fi
+}
+
 for _ in $(seq 50); do port_in_use "$port" && break; sleep 0.1; done
-port_in_use "$port" || { cat "$workdir/broadwayd.log" >&2; echo "gtk4-broadwayd did not start" >&2; exit 1; }
+port_in_use "$port" || { echo "gtk4-broadwayd did not start" >&2; report_broadwayd; exit 1; }
+
+# The app does not talk to gtk4-broadwayd directly: GTK 4.22 and later make
+# the daemon abort (a render node reused twice in one frame), which
+# broadway_dedup.py prevents. The app's display is the proxy's socket.
+app_display=$((display + 100))
+app_socket=$XDG_RUNTIME_DIR/broadway$((app_display + 1)).socket
+python3 "$dedup" "$app_socket" "$XDG_RUNTIME_DIR/broadway$((display + 1)).socket" >"$workdir/dedup.log" 2>&1 &
+pids+=($!)
+for _ in $(seq 50); do [[ -S $app_socket ]] && break; sleep 0.1; done
+[[ -S $app_socket ]] || { cat "$workdir/dedup.log" >&2; echo "broadway_dedup.py did not start" >&2; exit 1; }
 
 cat >"$workdir/shot.js" <<'EOF'
 const fs = require('fs');
@@ -235,11 +269,11 @@ pids+=("$shot_pid")
 
 for _ in $(seq 300); do [[ -e $workdir/ready ]] && break; sleep 0.1; done
 
-envs=(GDK_BACKEND=broadway "BROADWAY_DISPLAY=:$display" GSETTINGS_BACKEND=memory "${envs[@]}")
+envs=(GDK_BACKEND=broadway "BROADWAY_DISPLAY=:$app_display" GSETTINGS_BACKEND=memory "${envs[@]}")
 if ((flatpak)); then
   # Inside the sandbox the variables are set with --env; XDG_CONFIG_DIRS
   # keeps the runtime's own directories after the dpi settings.
-  sandbox=("--filesystem=xdg-run/broadway$((display + 1)).socket"
+  sandbox=("--filesystem=xdg-run/broadway$((app_display + 1)).socket"
            "--filesystem=$workdir/xdg:ro"
            "--env=XDG_CONFIG_DIRS=$workdir/xdg:/app/etc/xdg:/etc/xdg")
   for var in "${envs[@]}"; do sandbox+=("--env=$var"); done
@@ -257,6 +291,7 @@ fail() {
   [[ -n $applog ]] && cp "$workdir/app.log" "$applog"
   echo "App log:" >&2
   cat "$workdir/app.log" >&2
+  report_broadwayd
   rm -f "$out"
   exit 1
 }

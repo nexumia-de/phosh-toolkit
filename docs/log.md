@@ -1,7 +1,10 @@
 # Directory Update Log
 
+## 2026-11-21
+* **Fix**: [Screenshot testing](screenshot-testing.md#shared-render-nodes-gtk-420-broadway_deduppy), #48: `gtk4-broadwayd` aborted with `broadway-output.c:458:append_node_ops: assertion failed: (!reused_node->consumed)` because GTK 4.20+ shares the render node of a symbolic icon between widgets and the Broadway renderer then reuses one node id several times in a frame. `scripts/screenshot.sh` puts the new proxy `scripts/broadway_dedup.py` between app and display server, which replaces repeated reuses by copies and holds texture releases back for them (Pensum from the GNOME 51 runtime: 9 of 42 runs failed before, 0 of 57 after), and prints the display server's exit status and log when a screenshot fails. New requirement: `python3`.
+
 ## 2026-11-20
-* **Fix**: [Screenshot testing](screenshot-testing.md#known-limits-broadwayd-aborts-now-and-then): `gtk4-broadwayd` aborted during one of 20 release screenshots in two of three runs of Pensum 0.3.0, which ended its tag build. `scripts/release.py` takes a failed screenshot again, up to three times (`run_shot`); tests cover a shot that recovers and one that keeps failing.
+* **Fix**: [Screenshot testing](screenshot-testing.md#shared-render-nodes-gtk-420-broadway_deduppy): `gtk4-broadwayd` aborted during one of 20 release screenshots in two of three runs of Pensum 0.3.0, which ended its tag build. `scripts/release.py` takes a failed screenshot again, up to three times (`run_shot`); tests cover a shot that recovers and one that keeps failing.
 
 ## 2026-11-17
 * **Fix**: [Shared connection](shared-connection.md#proxy-login-proxy_login), #52: `ConnectionForm` showed the proxy login without `certificate_hosts_extra`, so on the setup page an identity provider on another host behind the same mutual TLS got no certificate. The form now owns "Other Certificate Hosts" (`account.certificate_hosts`, `proxy_login.parse_hosts()`) and passes them to `make_page`; [decision](decisions/certificate-hosts-in-form.md). Tests `test_proxy_login_gets_the_other_certificate_hosts`, `test_parse_hosts`.

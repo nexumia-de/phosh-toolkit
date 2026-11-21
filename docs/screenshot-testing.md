@@ -44,6 +44,8 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
 # How it works
 
 1. Starts `gtk4-broadwayd` on a free display (port 8080 + display number).
+   The app talks to it through `broadway_dedup.py`
+   ([shared render nodes](#shared-render-nodes-gtk-420-broadway_deduppy)).
 2. Opens the Broadway page in headless Chromium via Node Playwright with
    the requested viewport. The browser viewport defines the Broadway
    screen size, so the browser connects **before** the app starts.
@@ -99,50 +101,64 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
   other PyGObject apps call the distribution interpreter explicitly, e.g.
   `/usr/bin/python3.12`.
 
-# Known limits: shared render nodes (GTK 4.20+)
+# Shared render nodes (GTK 4.20+): `broadway_dedup.py`
 
-Found with Cirro on 2026-10-27, running the app from
-`org.gnome.Platform//51` (GTK 4.24):
+The app does not connect to `gtk4-broadwayd` itself but to
+`scripts/broadway_dedup.py`, a socket proxy the script starts on display
+number + 100. Without it, apps on GTK 4.20 and later (GNOME 51 runtime:
+GTK 4.24) make the display server abort or draw wrong pictures (#48).
 
-- **broadwayd aborts** with `Gdk:ERROR:…broadway-server.c:…:decode_nodes:
-  assertion failed: (node != NULL)`. The app then fails with "Unable to
-  read from broadway server" and the script with "App exited before its
-  window was shown". In Cirro this happened after the double-click that
-  maximizes the window, once the UI had more widgets (4 map pins, a
-  sidebar list). It failed in 6 of 6 runs at 1000×700, both with
-  Ubuntu's broadwayd (GTK 4.14) and with the runtime's own
-  `gtk4-broadwayd`. So it is not a version mismatch between the two.
-- **Repeated icons disappear.** In a list whose rows show the same
-  symbolic icon (`view-more-symbolic` menu buttons), only one row's
-  icon was drawn at 360×720. The widgets were mapped and allocated, so
-  only the picture is wrong.
-- **Likely cause.** The Broadway renderer
-  (`gsk/broadway/gskbroadwayrenderer.c`) gives every render node an id
-  and sends "reuse id" for a node it sent in the previous frame. GTK
-  4.20+ draws symbolic icons with `GtkSvg`, whose renderer caches
-  render nodes, so one node can appear in several places of a frame.
-  Broadway's server and its web client keep one object per id, so the
-  copies collide. This is not verified in the GTK sources; no GTK issue
-  was found for it (searched 2026-10-27).
-- **Workaround.** Start the window maximized in the app's demo mode
-  (Cirro: `self.maximize()` when `CIRRO_DEMO_DATA` is set). The script
-  then skips its double-click, and Cirro's 12 store shots passed 12 of
-  12. Avoid store shots of lists with repeated icons until GTK fixes
-  this. Real devices use Wayland and are not affected.
+- **Cause.** The Broadway renderer (`gsk/broadway/gskbroadwayrenderer.c`,
+  `add_new_node`) gives every render node an id and sends "reuse id" for
+  a node object it sent in the previous frame. GTK 4.20+ draws symbolic
+  icons with `GtkSvg`, which caches its render node
+  (`gtk/svg/gtksvgrenderer.c`, `can_reuse_node`), and the icon theme
+  hands the same paintable to every widget that shows the icon. So one
+  node object is in the tree several times (seen in Pensum's tree with
+  `gsk_render_node_serialize()`: `opacity "node1" { … }` and later
+  `child: "node1";`), and from the second frame on the same id is reused
+  several times in one frame. `gtk4-broadwayd` takes a reused node with
+  everything below it exactly once per frame
+  (`gdk/broadway/broadway-output.c`, `append_node_ops`), so it aborts:
 
-# Known limits: broadwayd aborts now and then
+  ```
+  Gdk:ERROR:../../../gdk/broadway/broadway-output.c:458:append_node_ops: assertion failed: (!reused_node->consumed)
+  ```
 
-Found with Pensum on 2026-11-20: in two of three Flatpak runs of the
-same code one of the 20 release screenshots failed, each time another
-one (`project-desktop-light`, `lists-desktop-dark`), with
-`gtk4-broadwayd` aborted (core dumped) and "App exited before its
-window was shown"; the third run took all 20. The pages were ones that
-had passed for weeks, so this is the server, not a widget. One of the
-two aborts ended the tag build of a release, so nothing was published.
+  The code is the same in GTK 4.14.5 (Ubuntu 24.04) and GTK `main`, so a
+  newer `gtk4-broadwayd` does not help. The abort seen with Cirro
+  (`decode_nodes: assertion failed: (node != NULL)`) and icons missing
+  in rows that repeat an icon have the same cause.
+- **When.** Only when a frame reuses the shared node and the part of the
+  tree around it changed, so it looks random: Pensum from the GNOME 51
+  runtime against Ubuntu's broadwayd failed in 8 of 26 runs at 1000×700
+  and 1 of 16 at 360×720 (2026-11-21), in CI in all three attempts of
+  `task-desktop-light`. Apps on the host's GTK 4.14 do not share nodes
+  (0 of 28 runs failed).
+- **Fix in the script.** The proxy forwards everything, but in each
+  frame (`SET_NODES` request) it replaces the second and later reuse of
+  an id, and a reuse of a node below an already reused one, by a copy of
+  that node with new ids (from 2³¹ on; the renderer's own ids stay
+  below). A copy may show a texture the app released after its frame
+  (textures drawn for unsupported nodes), which made the web client
+  throw `Cannot read properties of undefined (reading 'ref')` and stop
+  drawing; so the proxy holds a `RELEASE_TEXTURE` back while a node it
+  could still copy uses the texture. With the proxy: 0 of 57 runs failed
+  (31 at 1000×700) while it replaced reuses in 33 of 40 counted runs,
+  no page errors, and each of the four shots was identical byte for
+  byte in 10 runs (before, icons were missing in some). On a request it cannot read it says so and
+  forwards unchanged from then on. Tests: `tests/test_broadway_dedup.py`.
+- **Not fixed in GTK.** The bug is GTK's (renderer or daemon); no GTK
+  issue was found for it (searched 2026-10-27). Real devices use Wayland
+  and are not affected.
+- **When a screenshot fails** the script prints the app's log, how
+  `gtk4-broadwayd` ended (exit status and signal), its log and the
+  proxy's log, so the reason is in the CI log.
 
-`scripts/release.py` therefore takes a failed screenshot again, up to
-`SHOT_ATTEMPTS` (3) times, and fails the build only when all of them
-fail (`run_shot`). A page that fails every time is still found.
+`scripts/release.py` still takes a failed screenshot again, up to
+`SHOT_ATTEMPTS` (3) times (`run_shot`); each attempt is a new run of the
+script with its own display server, proxy and work directory. It was
+added on 2026-11-20 against these aborts, before their cause was known.
 
 # Known limits: pill buttons and reveal animations (GNOME 51)
 
@@ -171,7 +187,8 @@ Flatpak on `org.gnome.Platform//51` and the toolkit's script:
 
 # Requirements
 
-`gtk4-broadwayd` (Ubuntu package `libgtk-4-bin`, installed by `setup.sh`)
+`gtk4-broadwayd` (Ubuntu package `libgtk-4-bin`, installed by `setup.sh`),
+`python3` 3.9 or later (standard library only, for `broadway_dedup.py`)
 and Node with the `playwright` package and a Chromium it can launch.
 Playwright is resolved from the current directory (a local
 `node_modules`), then `NODE_PATH`, then the global npm root. CI installs
