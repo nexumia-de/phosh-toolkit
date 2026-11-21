@@ -94,6 +94,36 @@ def test_keyring_in_memory(keyring):
     assert keyring.lookup("token") is None
 
 
+def test_keyring_copy_in_memory_goes_when_the_keyring_works_again(keyring):
+    """A store that failed keeps the value in memory; it must not shadow
+    a later value the keyring took."""
+    stored = {}
+
+    class Secret:
+        COLLECTION_DEFAULT = None
+        fail = True
+
+        @classmethod
+        def password_store_sync(cls, schema, attributes, collection, label,
+                                value, cancellable):
+            if cls.fail:
+                raise RuntimeError("locked")
+            stored[attributes["kind"]] = value
+
+        @staticmethod
+        def password_lookup_sync(schema, attributes, cancellable):
+            return stored.get(attributes["kind"])
+
+    keyring._secret = lambda: Secret
+    keyring.store("token", "old")
+    assert keyring.lookup("token") == "old"
+    Secret.fail = False
+    keyring.store("token", "new")
+    assert keyring.lookup("token") == "new"
+    stored["token"] = "newer"     # e.g. written by another form
+    assert keyring.lookup("token") == "newer"
+
+
 def test_certificate_file(tmp_path, pki, keyring):
     file = CertificateFile(tmp_path / "app" / "client-certificate", keyring)
     file.save((pki / "client.p12").read_bytes(), P12_PASSWORD)
@@ -434,6 +464,19 @@ def test_router_log_has_no_user_info_and_no_query(server, ssids, caplog):
     logged = caplog.text
     assert "127.0.0.1:9" in logged and "is server server-a, not ours" in logged
     assert "pw" not in logged and "token" not in logged
+
+
+def test_proxy_502_body_has_no_secret_and_no_query():
+    proxy = MediaProxy(lambda path: (_ for _ in ()).throw(
+        LookupError(f"no route for {proxy.url(path)}")))
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(proxy.url("/media?api_key=token"), timeout=10)
+        text = e.value.reason + e.value.read().decode()
+        assert e.value.code == 502 and "no route" in text
+        assert proxy.secret not in text and "api_key" not in text
+    finally:
+        proxy.stop()
 
 
 def test_proxy_error_log_has_no_secret_and_no_query(caplog):

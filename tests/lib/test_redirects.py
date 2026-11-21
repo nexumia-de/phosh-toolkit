@@ -7,7 +7,9 @@ import pytest
 
 from conftest import FakeServer
 from phosh_toolkit import redirects
-from phosh_toolkit.http import NETWORK, Client, HttpError, origin
+from phosh_toolkit import tls
+from phosh_toolkit.http import (NETWORK, PROXY_LOGIN, Client, HttpError,
+                                origin)
 
 UA = "Test/1.0"
 
@@ -118,3 +120,26 @@ def test_next_hop_rules():
     assert redirects.next_hop("GET", url, 302, "file:///etc/passwd") is None
     assert redirects.next_hop("GET", url, 302, "") is None
     assert redirects.next_hop("GET", url, 200, "/y") is None
+
+
+def test_client_certificate_stays_with_the_requested_host(
+        server, mtls_server, pki, trust):
+    """A redirect to another host does not get the client certificate
+    unless that host is in certificate_hosts: an answer nobody signed for
+    (plain http on a strange network) can't make the app identify itself
+    to a host of its choosing."""
+    http = Client(UA)
+    http.tls_database = trust
+    http.certificate = tls.load((pki / "client-combined.pem").read_bytes())
+    # "localhost" and "127.0.0.1" are two hosts for the client.
+    start = hop(server, mtls_server.url + "/info").replace(
+        "127.0.0.1", "localhost", 1)
+    with pytest.raises(HttpError) as e:
+        http.request("GET", start)
+    assert e.value.kind == PROXY_LOGIN and "?" not in e.value.url
+    assert mtls_server.requests == []
+    http.certificate_hosts = {"127.0.0.1"}
+    assert b"server-a" in http.request("GET", start).body
+    # The host the app asked itself always gets it.
+    http.certificate_hosts = frozenset()
+    assert b"server-a" in http.request("GET", mtls_server.url + "/info").body

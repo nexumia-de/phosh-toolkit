@@ -298,10 +298,15 @@ class ConnectionForm:
         account.home_networks = list(self.networks)
         account.certificate_hosts = self.certificate_hosts()
         self.hosts_entry.set_text(", ".join(account.certificate_hosts))
+        # The proxy's sessions and credentials go with their address.
+        used = {origin(url) for url in (account.remote_url, account.local_url)
+                if url}
+        self.proxy_cookies = {key: value for key, value
+                              in self.proxy_cookies.items() if key in used}
         self.cookies.save(self.proxy_cookies)
         if self.proxy is not None:
             old = self._remote_at_start
-            if old and account.remote_url and origin(old) != origin(account.remote_url):
+            if old and origin(old) not in used:
                 self.credentials.set(old, "", "")
             if account.remote_url:
                 self.credentials.set(account.remote_url, *self.proxy_credentials())
@@ -337,6 +342,9 @@ class ConnectionForm:
         self.password.remove_css_class("error")
         http = Client(self.user_agent)
         http.certificate = certificate
+        http.certificate_hosts = (
+            proxy_login.certificate_hosts(remote, self.certificate_hosts())
+            | proxy_login.certificate_hosts(local))
         http.cookies = dict(self.proxy_cookies)
         user, proxy_password = self.proxy_credentials()
         if self.proxy is not None:

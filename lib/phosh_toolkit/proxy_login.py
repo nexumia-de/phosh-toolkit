@@ -196,6 +196,7 @@ def make_page(server_url, login_url, http, probe, done, trusted=(),
         # cookies.
         trial = Client(http.user_agent)
         trial.certificate = http.certificate
+        trial.certificate_hosts = http.certificate_hosts
         trial.tls_database = http.tls_database
         trial.cookies = dict(http.cookies, **{key: cookies})
         trial.proxy_auth = dict(http.proxy_auth)

@@ -120,6 +120,11 @@ class Client:
         self._local = threading.local()
         # Read by every thread, replaced by the main thread.
         self.certificate = None
+        # Lower-case host names that get the certificate besides the host
+        # a request is made to: the hosts a redirect may lead to that
+        # sit behind the same mutual TLS (the other address of the
+        # server, an identity provider). Replaced as a whole.
+        self.certificate_hosts = frozenset()
         # Trusted CAs for the server certificate; None is the system's.
         # Tests set their own CA here.
         self.tls_database = None
@@ -142,7 +147,21 @@ class Client:
             self._local.session = session
         return session
 
-    def _message(self, method, url, headers, body, content_type):
+    def _certificate_for(self, host, asked):
+        """The certificate for a hop to `host` of a request the app made
+        to the host `asked`, or None: a redirect never chooses who the
+        app identifies itself to."""
+        if self.certificate is None or \
+                host.lower() not in {asked, *self.certificate_hosts}:
+            return None
+        return self.certificate
+
+    def _withheld(self, host, first_url):
+        """A hop to `host` got no certificate although there is one."""
+        return self.certificate is not None and self._certificate_for(
+            host, redirects.host(first_url)) is None
+
+    def _message(self, method, url, headers, body, content_type, asked):
         try:
             msg = Soup.Message.new(method, url)
         except TypeError:
@@ -160,8 +179,9 @@ class Client:
         # Without a certificate libsoup fails the handshake with
         # CERTIFICATE_REQUIRED when the server asks for one, which the
         # connection form turns into "choose your client certificate".
-        if self.certificate is not None:
-            msg.set_tls_client_certificate(self.certificate)
+        certificate = self._certificate_for(redirects.host(url), asked)
+        if certificate is not None:
+            msg.set_tls_client_certificate(certificate)
         key = origin(url)
         cookie = self.cookies.get(key)
         if cookie:
@@ -192,6 +212,8 @@ class Client:
             # usually reached through a redirect.
             raise proxy_login(url)
         if status in (400, 403) and is_certificate_page(response.body):
+            if self._withheld(msg.get_uri().get_host() or "", url):
+                raise proxy_login(url)
             raise HttpError(CERTIFICATE_REQUIRED,
                             "The server asks for a client certificate", status)
         if status == 401:
@@ -213,15 +235,25 @@ class Client:
               read):
         """(message, bytes or input stream) of the last hop, following
         redirects (see redirects.py)."""
+        first = url
+        asked = redirects.host(url)
         for _ in range(redirects.MAX_HOPS + 1):
-            msg = self._message(method, url, headers, body, content_type)
+            msg = self._message(method, url, headers, body, content_type,
+                                asked)
             try:
                 if read:
                     result = session.send_and_read(msg, None)
                 else:
                     result = session.send(msg, None)
             except GLib.Error as e:
-                raise classify(e) from None
+                error = classify(e)
+                if error.kind == CERTIFICATE_REQUIRED and \
+                        self._withheld(redirects.host(url), first):
+                    # Another host asks for the certificate: a login in
+                    # front of the server, which the login window shows
+                    # (it knows the hosts that may get the certificate).
+                    error = proxy_login(first)
+                raise error from None
             location = msg.props.response_headers.get_one("Location")
             hop = redirects.next_hop(method, url, msg.get_status(),
                                      location)

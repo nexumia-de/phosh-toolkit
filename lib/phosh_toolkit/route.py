@@ -21,7 +21,9 @@ def normalize(text):
     trailing slash. Without a scheme it gets "https://" (the owner's rule),
     for local addresses too; a typed "http://" or
     "https://" is kept. Raises AddressError for anything that is not an
-    http(s) URL."""
+    http(s) URL, and for a user name or password in it: the address is
+    saved in the account file and shown in the form, credentials belong
+    in the keyring."""
     text = (text or "").strip()
     if not text:
         raise AddressError("Enter an address")
@@ -30,6 +32,8 @@ def normalize(text):
     parts = urlsplit(text)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise AddressError("Use an address like https://media.example.org")
+    if "@" in parts.netloc:
+        raise AddressError("Leave user name and password out of the address")
     try:
         parts.port
     except ValueError:
