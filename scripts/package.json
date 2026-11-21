@@ -3,6 +3,6 @@
   "private": true,
   "description": "Node packages for scripts/screenshot.sh, pinned exactly; Dependabot proposes updates.",
   "dependencies": {
-    "playwright": "1.64.1"
+    "playwright": "1.65.0"
   }
 }
