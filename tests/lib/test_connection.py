@@ -375,6 +375,10 @@ def test_proxy_follows_the_route(server):
     import time
     from urllib.parse import urlsplit
     other = FakeServer("server-b").start()
+    # A slow upstream (about 10 s for the file): on a fast one the whole
+    # megabyte could sit in socket buffers before the route moves, and
+    # there would be no running read left to cut (issue 56).
+    server.media_rate = 100_000
     try:
         current = {"url": server.url}
         proxy = MediaProxy(lambda path: (client(), current["url"] + path, {}))
