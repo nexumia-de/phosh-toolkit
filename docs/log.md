@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Update**: [Shared connection](shared-connection.md#modules), #27: `testing.run_until()` prints the stacks of all threads (`faulthandler`) before its `TimeoutError`. The hangs of Ephyra's and Nauta's UI tests happen only on GitHub's runners (not in more than 30 local runs), so the next failed run has to show where the workers are; what to look for is in the new [owner checks](owner-checks.md), which collects the steps only the owner can do.
 * **Fix**: tests of the shared package, #56: `test_proxy_follows_the_route` failed about once in four full runs because the fake server sent the whole megabyte at once, so the upstream read could be finished before the route moved; the server now sends slowly (`media_rate`), so a read is always running. `test_stop_releases_the_pipeline_on_the_main_thread` no longer deletes a name a lambda still uses (pyflakes: undefined name).
 
 ## 2026-11-21

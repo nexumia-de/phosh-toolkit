@@ -69,7 +69,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
 | `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
-| `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests |
+| `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests; `run_until()` prints the stacks of all threads before its `TimeoutError`, so a hang that only happens in CI can be read from the run's log |
 
 Nothing in the package names an app, a server product or a URL.
 
