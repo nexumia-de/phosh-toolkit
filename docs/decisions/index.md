@@ -22,3 +22,4 @@
 * [Shared Flatpak modules through a git submodule](shared-flatpak-modules.md) - libshumate and protobuf-c live in flatpak/ and apps include them through the toolkit as a submodule; the map set-up stays in the apps.
 * [Toolkit versions: plain tags, apps pin the workflows](toolkit-version-pins.md) - Apps call the reusable workflows at the commit of a toolkit tag; the workflow finds its own scripts; a real app is built before a workflow change is tagged.
 * [A typed http:// remote address stays allowed](http-remote-address.md) - No refusal and no warning: no scheme means https, and the app cannot tell a VPN address from the open internet.
+* [In-app issue reports](in-app-issue-reports.md) - Issues from inside the apps: the user's own token or the prefilled form in the browser; no relay server, device flow later.

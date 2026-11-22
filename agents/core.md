@@ -79,6 +79,12 @@ on every turn. Spend tokens on the task, not on context.
   issue says `Closes #<n>`. Future work found on the way becomes an
   issue, not a line in a doc. Details: [planning](../docs/planning.md).
 
+## Feedback
+
+- Apps with a UI let users report a problem as a GitHub issue from
+  inside the app: directly with their own token, otherwise the filled-in
+  issue form ([feedback](../docs/feedback.md)). Not in QuestArc.
+
 ## Knowledge
 
 - Each repository keeps its knowledge in its own OKF v0.2 bundle

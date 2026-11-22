@@ -17,6 +17,7 @@ links between concepts. Change history is in [log.md](log.md).
 
 * [Adaptive libadwaita UI](adaptive-libadwaita.md) - How to build GTK4/libadwaita UIs that work at 360×720 and on the desktop: navigation and swipe back, thumb reach (controls at the bottom), touch targets and gestures.
 * [Visual design](design.md) - Stock libadwaita styling, colour, typography, icons, text and feedback patterns (undo instead of confirmation), with a review checklist.
+* [Report a problem from the app](feedback.md) - Every app's "Report a Problem…": a GitHub issue with the user's own token, otherwise the filled-in issue form in the browser; what is sent, `phosh_toolkit.feedback`.
 * [Support for development](support.md) - Voluntary support through Liberapay (Open Collective later): link in metainfo, About dialog, README and FUNDING.yml; wording, donor privacy, fees.
 * [Screenshot testing](screenshot-testing.md) - How scripts/screenshot.sh renders an app at phone size and its Broadway quirks.
 
