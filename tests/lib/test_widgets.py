@@ -128,3 +128,24 @@ def test_style_row_applies_and_reports(adw):
     style.apply("system")
     assert manager.get_color_scheme() == Adw.ColorScheme.DEFAULT
     assert style.color_scheme("bogus") == "DEFAULT"
+
+
+def test_run_until_shows_all_threads_when_it_gives_up(capfd):
+    import threading
+    from phosh_toolkit.testing import run_until
+    release = threading.Event()
+
+    def waiting_worker():
+        release.wait(10)
+
+    thread = threading.Thread(target=waiting_worker)
+    thread.start()
+    try:
+        with pytest.raises(TimeoutError):
+            run_until(lambda: False, timeout=0.05)
+    finally:
+        release.set()
+        thread.join()
+    err = capfd.readouterr().err
+    assert "run_until: not reached after 0.05 s" in err
+    assert "waiting_worker" in err and "run_until" in err

@@ -1,0 +1,19 @@
+# Checks before every commit in this repository (docs/host-setup.md,
+# "Pre-commit hooks"); setup.sh installs them. The same ones run in CI.
+repos:
+  - repo: local
+    hooks:
+      - id: metadata
+        name: metainfo and desktop file
+        entry: scripts/precheck.sh
+        language: script
+        files: \.(metainfo\.xml|desktop)$
+      - id: shellcheck
+        name: shell scripts
+        entry: shellcheck
+        language: system
+        files: ^setup\.sh$|^scripts/.*\.sh$
+  - repo: https://github.com/fsfe/reuse-tool
+    rev: ea739bff9c6daa1c4c8a5c5dfd069f3fb0374728  # frozen: v6.3.0
+    hooks:
+      - id: reuse

@@ -109,6 +109,46 @@ build, every such module must have files in
 `/app/share/licenses/<app id>/<module>/`. Apps without third-party
 modules skip the last two checks.
 
+# Precheck and Flatpak OK
+
+Two jobs frame the reusable workflow (issue 18).
+
+**Precheck** runs first, in about a minute; the Flathub linter and the
+builds start only when it passed, so a mistake that a build would show
+after many minutes costs seconds:
+
+- actionlint 1.7.9 on the caller's `.github/workflows/` (syntax,
+  expressions, job wiring; without its shellcheck and pyflakes passes,
+  so a style finding in a `run:` script never stops a build);
+- `scripts/precheck.sh` on the files matching the input `metadata`
+  (default `data/*`): `appstreamcli validate --no-net` on every
+  `*.metainfo.xml`, `desktop-file-validate` and the
+  `X-Purism-FormFactor=…mobile;` check ([Phosh](phosh.md)) on every
+  `*.desktop`. Templates (`*.in`) are skipped; a repository without such
+  files (Nuntius, a fork with `.in.in` templates) passes with a notice.
+
+`release.py check` is not part of it: the release workflow's *Changelog*
+job already runs it in seconds.
+
+**Flatpak OK** runs last and always. It fails when any job of the
+workflow failed or was cancelled and passes when they passed or were
+skipped (release and nightly jobs are skipped on pull requests). It is
+the only check of this workflow that a branch ruleset requires
+([branch protection](branch-protection.md)), so jobs can be added or
+renamed here without changing the ruleset of every repository.
+
+Neither job needs a permission beyond `contents: read`; callers grant
+what they granted before.
+
+Checked on 2026-11-22: `scripts/precheck.sh` passes on the current
+`main` of Cirro, Ephyra, Nauta, Nuntius, Pensum, Pulsus and Vestigia.
+actionlint could not be run in the cloud session; it first ran in the
+toolkit's self-test, on the toolkit's own workflows
+([owner checks](owner-checks.md)). There it reported
+`job.workflow_sha` as unknown (actionlint 1.7.12 does not know that
+property yet); `.github/actionlint.yaml` of this repository ignores
+that one message. Apps do not use the property and need no such file.
+
 # Flathub linter
 
 The job *Flathub linter* runs `flatpak-builder-lint manifest` from
@@ -158,8 +198,9 @@ the workflow also:
 - adds a development `<release>` with the pending changelog fragments to
   the nightly app's metainfo.
 
-The jobs check out phosh-toolkit's scripts at the input `toolkit-ref`
-(default `main`; keep it equal to the ref in `uses:`) and move them out
+The jobs check out phosh-toolkit's scripts at the commit of the
+workflow file itself (`job.workflow_sha`, so the ref in `uses:` is the
+only pin; the input `toolkit-ref` overrides it) and move them out
 of the workspace, because a manifest's `type: dir` source copies the
 workspace into the build. Details: [releases](releases.md).
 

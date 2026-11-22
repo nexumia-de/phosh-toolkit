@@ -21,7 +21,8 @@ sources:
 
 The `<release>` elements of the app's metainfo are the changelog. GNOME
 Software shows them as "What's New", the app's About dialog shows the
-newest one (`AdwAboutDialog` release notes), and the GitHub Release of a
+newest one (`AdwAboutDialog` release notes, through
+[`phosh_toolkit.release_notes`](shared-connection.md#whats-new-release_notes)), and the GitHub Release of a
 tag gets the same text. Nobody writes them by hand: they are collected
 from changelog fragments.[^appstream-releases] Why this design:
 [decision](decisions/release-automation.md).

@@ -51,7 +51,7 @@ name: Flatpak
 on: [push, pull_request, workflow_dispatch]
 jobs:
   flatpak:
-    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
     with:
       manifest: de.nexumia.MyApp.yml
 ```

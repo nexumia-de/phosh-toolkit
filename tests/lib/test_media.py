@@ -135,7 +135,7 @@ def test_stop_releases_the_pipeline_on_the_main_thread(url):
     media.seek(0)
     media.set_playing(True)
     holder = [media]
-    del media
+    media = None    # the list holds the last reference now
     thread = threading.Thread(target=holder.clear)
     thread.start()
     thread.join()

@@ -76,7 +76,7 @@ jobs:
   flatpak:
     permissions:
       contents: write
-    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
     with:
       manifest: de.nexumia.MyApp.yml
 ```
@@ -84,7 +84,9 @@ jobs:
 Inputs: `manifest` (required), `bundle` (file name without extension,
 defaults to the app id), `retention-days` (default 14),
 `dependencies-doc` (licence inventory, default `docs/dependencies.md`,
-see [licensing](licensing.md)), `release`
+see [licensing](licensing.md)), `metadata` (glob of the files the
+Precheck job validates, default `data/*`; see
+[precheck](flatpak-workflow.md#precheck-and-flatpak-ok)), `release`
 (a tag `v<version>` attaches the bundles to its GitHub Release),
 `nightly` (every push to `main` also builds `<app id>.Devel` and
 attaches it to the pre-release `nightly`; see
@@ -95,8 +97,32 @@ publishing to the phone through GNOME Software is described in
 [shared app repository](app-repository.md).
 
 Further inputs for the [release features](releases.md):
-`release-config` (default `release.toml`) and `toolkit-ref` (ref of the
-toolkit scripts, default `main`).
+`release-config` (default `release.toml`). `toolkit-ref` (ref of the
+toolkit scripts) is left out: the workflow uses the commit of its own
+file.
+
+## Pinning the toolkit
+
+Apps call the reusable workflows at the commit of a toolkit tag, with
+the tag as comment, like every other action
+([decision](decisions/toolkit-version-pins.md)):
+
+```yaml
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
+```
+
+- The commit of a tag: `git ls-remote https://github.com/nexumia-de/phosh-toolkit refs/tags/v0.7.0`.
+- All three workflows of an app (`flatpak.yml`, `release.yml`,
+  `update-check.yml`) use the same commit. Nothing else names the
+  version: the jobs check out the toolkit's scripts at
+  `job.workflow_sha`, the commit of the workflow file that defines
+  them.
+- Dependabot's `github-actions` updates (already in every repository's
+  `.github/dependabot.yml`) propose the next tag with SHA and comment;
+  the app's CI then runs against it.
+- `@main` still works and is what an app uses until its own pull request
+  switches it; from then on a broken commit on the toolkit's `main`
+  cannot break that app's CI or a running release.
 
 For a fork of a third-party app, trigger the workflow on the `phosh`
 branch instead of `main`.
@@ -105,7 +131,7 @@ branch instead of `main`.
 
 `release.toml`, `changelog.d/README.md` and
 `.github/workflows/release.yml` calling
-`nexumia-de/phosh-toolkit/.github/workflows/release.yml@main` (the usage
+`nexumia-de/phosh-toolkit/.github/workflows/release.yml@<commit of the tag>` (the usage
 block at the top of that file), plus the secret `RELEASE_TOKEN` and the
 required check `release / Changelog` in the app's ruleset. See
 [releases](releases.md).
@@ -113,7 +139,7 @@ required check `release / Changelog` in the app's ruleset. See
 # 3b. Updates and licences
 
 - `.github/workflows/update-check.yml` calling
-  `nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@main`
+  `nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@<commit of the tag>`
   weekly, and `.github/dependabot.yml` for GitHub Actions. Setup steps:
   [dependency updates](dependency-updates.md).
 - `REUSE.toml` and `LICENSES/`, `docs/dependencies.md`, and licence
@@ -159,6 +185,80 @@ From the source tree and in the app's test job the package comes from
 the sibling checkout: `PYTHONPATH=../phosh-toolkit/lib`. The app's
 `tests.yml` checks out phosh-toolkit at the commit the manifest pins,
 so tests and Flatpak use the same code.
+
+# 3e. Pre-commit hooks
+
+The checks of the "Before committing" lists that a machine can run are
+hooks, so a commit that breaks them is refused locally instead of
+failing in CI minutes later. An app copies
+`examples/.pre-commit-config.yaml` to its root:
+
+| Hook | From | What |
+|---|---|---|
+| `phosh-metadata` | this toolkit (`.pre-commit-hooks.yaml`) | `scripts/precheck.sh` on changed `*.metainfo.xml` and `*.desktop`: `appstreamcli validate --no-net`, `desktop-file-validate`, the `mobile;` form factor |
+| `phosh-changelog` | this toolkit | `release.py check` when a file in `changelog.d/` changed: fragment names and content |
+| `reuse` | fsfe/reuse-tool | `reuse lint` |
+
+- `rev` of the toolkit is the commit of the tag the app's workflows pin
+  ([pinning](#pinning-the-toolkit)), with `# frozen: v…`; change them
+  together.
+- `setup.sh` installs pre-commit and the hooks
+  ([host setup](host-setup.md#pre-commit-hooks)). By hand:
+  `pre-commit install`; all files once: `pre-commit run --all-files`.
+- The hooks call `appstreamcli`, `desktop-file-validate` and `python3`
+  from the host; `setup.sh` installs them.
+- A Ruff hook belongs to the app that has adopted Ruff, not to the
+  skeleton.
+
+Checked on 2026-11-22 with `pre-commit try-repo` in a scratch repository
+holding Cirro's metainfo, desktop file and fragments: both hooks pass;
+with `X-Purism-FormFactor=Workstation;` the commit is refused. Run time
+under a second after the first run.
+
+# 3d. Shared Flatpak modules
+
+Manifest modules that two apps need live in `flatpak/`
+([decision](decisions/shared-flatpak-modules.md),
+[inventory](dependencies.md)):
+
+| File | Modules | For |
+|---|---|---|
+| `flatpak/libshumate.yml` | `libshumate`, nested `protobuf-c` | apps with a map |
+
+flatpak-builder includes module files only from the app's own tree, so
+the app adds the toolkit as a git submodule (the way Flathub's
+`shared-modules` is used) at the same tag its `phosh-toolkit` module
+pins:
+
+```sh
+git submodule add https://github.com/nexumia-de/phosh-toolkit.git toolkit
+```
+
+```sh
+git -C toolkit checkout v0.7.0
+```
+
+```yaml
+modules:
+  - toolkit/flatpak/libshumate.yml
+  - name: phosh-toolkit
+    ...
+```
+
+- The Flatpak workflow checks submodules out (`submodules: recursive`)
+  and `--show-manifest` inlines the file, so the dependency inventory
+  check, the licence file check and the Flathub manifest see the
+  modules like any other. List `` `libshumate` `` and `` `protobuf-c` ``
+  in the app's `docs/dependencies.md`.
+- `REUSE.toml` of the app: REUSE skips submodules by default; nothing
+  to add.
+- Versions are updated here (`.github/workflows/updates.yml`), not in
+  the app: when the app moves to a new toolkit tag, change the
+  submodule and the `tag`/`commit` of the `phosh-toolkit` module in the
+  same pull request.
+- The file sets no `cleanup`; the app's manifest removes headers and
+  static libraries as before (`/include`, `/lib/pkgconfig`,
+  `/share/gir-1.0`, `'*.a'`, `'*.la'`).
 
 # 4. Screenshots
 

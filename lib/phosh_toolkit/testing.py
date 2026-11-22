@@ -1,8 +1,10 @@
 """Helpers for the apps' tests: a test PKI made with openssl for mutual TLS,
 and running the GLib main loop until a condition holds."""
+import faulthandler
 import shutil
 import ssl
 import subprocess
+import sys
 from pathlib import Path
 
 from gi.repository import GLib
@@ -11,11 +13,19 @@ P12_PASSWORD = "secret"
 
 
 def run_until(predicate, timeout=10):
-    """Iterate the default main context until predicate() is true."""
+    """Iterate the default main context until predicate() is true. After
+    `timeout` seconds: the stacks of all threads on stderr, then
+    TimeoutError."""
     context = GLib.MainContext.default()
     deadline = GLib.get_monotonic_time() + timeout * 1_000_000
     while not predicate():
         if GLib.get_monotonic_time() > deadline:
+            # Where every thread is, in the test log: a hang in CI that
+            # does not happen locally can then be read from the run
+            # (workers waiting for a stopped server, a blocked main loop).
+            print(f"run_until: not reached after {timeout} s; threads:",
+                  file=sys.stderr, flush=True)
+            faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
             raise TimeoutError("main loop condition not reached")
         context.iteration(False)
         GLib.usleep(2000)

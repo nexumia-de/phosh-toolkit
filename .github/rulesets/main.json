@@ -47,15 +47,7 @@
             "integration_id": 15368
           },
           {
-            "context": "flatpak / REUSE compliance",
-            "integration_id": 15368
-          },
-          {
-            "context": "flatpak / Build (x86_64)",
-            "integration_id": 15368
-          },
-          {
-            "context": "flatpak / Build (aarch64)",
+            "context": "flatpak / Flatpak OK",
             "integration_id": 15368
           }
         ]

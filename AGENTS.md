@@ -5,7 +5,8 @@
 
 Shared material for the nexumia-de Phosh apps: agent rules (`agents/`),
 docs (`docs/`, entry [docs/index.md](docs/index.md)), the shared Python
-package `lib/phosh_toolkit/`, scripts, the app skeleton in `examples/`
+package `lib/phosh_toolkit/`, shared Flatpak modules (`flatpak/`),
+scripts, pre-commit hooks, the app skeleton in `examples/`
 and reusable CI workflows.
 
 - Agent rules for other repositories live in `agents/`: every

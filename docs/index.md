@@ -23,6 +23,7 @@ links between concepts. Change history is in [log.md](log.md).
 # Workflows
 
 * [Host setup](host-setup.md) - What setup.sh installs (full and ci profiles), why cage replaced weston, and the apt hardening.
+* [Owner checks](owner-checks.md) - What only the owner can do after the issue clean-up of 2026-11-22: settings, accounts, tags, device and CI observations.
 * [Planning with issues and milestones](planning.md) - Issues are the work items, milestones the steps of the plan, labels classify; roadmap.md keeps the goals; an optional organisation Project shows all repositories.
 * [Releases, changelog and screenshots](releases.md) - Changelog fragments, release pull request, automatic tag, release notes from the metainfo and screenshots taken by CI from the built Flatpak.
 * [Flathub readiness](flathub.md) - What is prepared for a later Flathub submission, what still blocks it, and the submission steps.
@@ -36,8 +37,9 @@ links between concepts. Change history is in [log.md](log.md).
 
 # Shared code
 
-* [Shared connection and playback](shared-connection.md) - The `phosh_toolkit` Python package: HTTP with client certificates, home/local and remote route with server id check, keyring, connection form, media proxy and playbin player, image cache.
-* [Security review of phosh_toolkit](security-review.md) - Findings of the 2026-11 review of the shared package with severity, fix and test, what stays open and what apps adopt with the pin bump.
+* [Shared connection and playback](shared-connection.md) - The `phosh_toolkit` Python package: HTTP with client certificates, home/local and remote route with server id check, keyring, connection form, media proxy and playbin player, image cache, own location, release notes for the About dialog.
+* [Dependencies of the shared Flatpak modules](dependencies.md) - libshumate and protobuf-c in `flatpak/`, with version, licence and how they are kept current.
+* [Security review of phosh_toolkit](security-review.md) - Findings of the 2026-11 review of the shared package with severity, fix and test, what was decided without a change and what apps adopt with the pin bump.
 
 # Decision records
 

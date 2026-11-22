@@ -1,0 +1,8 @@
+# actionlint (Precheck job of the Flatpak workflow) does not know the
+# job context's workflow_sha yet (actionlint 1.7.12). The reusable
+# workflows use it to check out their own scripts
+# (docs/decisions/toolkit-version-pins.md).
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'property "workflow_sha" is not defined in object type'

@@ -57,8 +57,9 @@ on every turn. Spend tokens on the task, not on context.
 ## Repositories and branches
 
 - Protected default branches: [branch protection](../docs/branch-protection.md).
-  When a CI job is renamed, update the required check names in the same
-  pull request and tell the owner to re-import the ruleset.
+  Rulesets require `flatpak / Flatpak OK` and the repository's own test
+  jobs; when one of those or the calling job is renamed, update the
+  ruleset in the same pull request and tell the owner to re-import it.
 - Forks of third-party projects: the upstream branch stays identical to
   upstream; fork work goes to `phosh`.
 
@@ -95,6 +96,9 @@ on every turn. Spend tokens on the task, not on context.
   Cross-references are relative markdown links.
 
 ## Before committing
+
+Never commit with `--no-verify`: where a repository has
+`.pre-commit-config.yaml`, its hooks run part of these checks.
 
 1. Build and run the tests of the touched project.
 2. No code duplicated from another repository; every new or grown file

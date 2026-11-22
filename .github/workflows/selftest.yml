@@ -22,14 +22,10 @@ jobs:
         run: ./setup.sh
         env:
           SETUP_PROFILE: ci
-      - name: Validate desktop file and metainfo
-        run: |
-          desktop-file-validate examples/*.desktop
-          appstreamcli validate --no-net examples/*.metainfo.xml
-          # Phosh needs "mobile;" (case-insensitive, trailing ';').
-          grep -Eiq '^X-Purism-FormFactor=.*mobile;' examples/*.desktop
-      - name: Lint shell scripts
-        run: shellcheck setup.sh scripts/*.sh
+      # .pre-commit-config.yaml: metadata, shellcheck, reuse lint; the
+      # same hooks a commit runs locally.
+      - name: Run the pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
       - name: Test the release script
         run: |
           sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 \
@@ -64,7 +60,7 @@ jobs:
             gir1.2-soup-3.0 gir1.2-secret-1 glib-networking \
             gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base \
             gstreamer1.0-plugins-good gir1.2-webkit-6.0 bubblewrap \
-            openssl xvfb xauth dbus
+            gir1.2-xdp-1.0 gir1.2-xdpgtk4-1.0 openssl xvfb xauth dbus
       - name: Run tests
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -v tests/lib
 
@@ -77,7 +73,48 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       manifest: examples/de.nexumia.PhoshDemo.yml
-      # Takes the demo's screenshots from the built Flatpak, with the
-      # scripts of this commit rather than main.
+      metadata: examples/*
+      # Takes the demo's screenshots from the built Flatpak. The scripts
+      # come from this commit: the workflow checks the toolkit out at
+      # the commit of its own file.
       release-config: examples/release.toml
-      toolkit-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+  # A change to the reusable Flatpak workflow or to the scripts it runs
+  # also builds a real app with it before it is tagged: apps pin the
+  # workflows to a toolkit tag (docs/decisions/toolkit-version-pins.md).
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      workflow: ${{ steps.diff.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Did the Flatpak workflow or its scripts change?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=false
+          case $EVENT in
+            workflow_dispatch) changed=true ;;
+            pull_request)
+              if ! git diff --quiet "$BASE" HEAD -- .github/workflows/flatpak.yml scripts; then
+                changed=true
+              fi ;;
+          esac
+          echo "workflow=$changed" >> "$GITHUB_OUTPUT"
+
+  app:
+    # Pulsus: a small real app (the phosh-toolkit module and the app)
+    # with release screenshots.
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      app-repository: nexumia-de/pulsus
+      manifest: de.nexumia.Pulsus.yml
