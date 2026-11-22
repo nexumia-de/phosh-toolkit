@@ -38,12 +38,13 @@ modules), Pulsus (`settings` only).
 | 7 | Low | Found on 2026-11-21: `http.Client` set the client certificate on every redirect hop, so any answer (also from a plain `http` local address on a strange network) could make the app identify itself to a host of its choosing; the same flaw as in the web view (3) | The certificate goes to the host the app asked and to `Client.certificate_hosts` only ([mutual TLS](shared-connection.md#mutual-tls-tls-http-certificate)) | `test_client_certificate_stays_with_the_requested_host` |
 | 8 | Info | Found on 2026-11-21: the media proxy compared its secret with `startswith` | `hmac.compare_digest` | covered by the proxy tests |
 
-# Open
+# Decided, no change
 
-- **5a, `http://` for the remote address** is still accepted, without a
-  warning: some reach their server through a VPN. Refusing or warning
-  changes what users can enter and is the owner's decision
-  ([security notes](shared-connection.md#security-notes)).
+- **5a, `http://` for the remote address** stays accepted, without a
+  warning: an address without scheme becomes `https://`, so plain HTTP
+  is the user's explicit choice, and the app cannot tell a VPN address
+  from the open internet. Decided on 2026-11-22:
+  [http remote address](decisions/http-remote-address.md).
 - **6, information**: errors are classified by server text, and strict
   mode trusts the Wi-Fi name alone. Both are recorded in the
   [security notes](shared-connection.md#security-notes); no change.

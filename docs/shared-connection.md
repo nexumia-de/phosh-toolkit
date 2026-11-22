@@ -453,8 +453,9 @@ release_notes.add_to(dialog, APP_ID, source=SOURCE_METAINFO)
   with the same name gets the credentials.
 - A typed `http://` is kept for the remote address too (some reach
   their server through a VPN). Then everything, credentials included,
-  crosses the network unencrypted; the form does not warn yet
-  (nexumia-de/phosh-toolkit#45, finding 5).
+  crosses the network unencrypted unless a tunnel encrypts it. The
+  form neither refuses nor warns, on purpose
+  ([decision](decisions/http-remote-address.md)).
 - Errors are told apart by text where libsoup and GnuTLS give nothing
   better (`http.classify`, `is_certificate_page`): a server can choose
   which message the user sees, not what the app sends.
