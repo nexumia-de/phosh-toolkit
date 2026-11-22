@@ -13,8 +13,8 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio  # noqa: E402
 
 from phosh_toolkit import feedback, http  # noqa: E402
-from phosh_toolkit.feedback import github  # noqa: E402
-from phosh_toolkit.feedback import report as rp  # noqa: E402
+from phosh_toolkit import feedback_github as github  # noqa: E402
+from phosh_toolkit import feedback_report as rp  # noqa: E402
 from phosh_toolkit.keyring import Keyring  # noqa: E402
 from phosh_toolkit.testing import run_until  # noqa: E402
 

@@ -3,8 +3,8 @@
 from gi.repository import Gio
 
 from phosh_toolkit import http
-from phosh_toolkit.feedback import report as rp
-from phosh_toolkit.feedback.dialog import GITHUB_TOKEN, ReportDialog
+from phosh_toolkit import feedback_report as rp
+from phosh_toolkit.feedback_dialog import GITHUB_TOKEN, ReportDialog
 from phosh_toolkit.keyring import Keyring
 
 __all__ = ["GITHUB_TOKEN", "ReportDialog", "install", "issue_url"]

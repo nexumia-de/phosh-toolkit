@@ -73,7 +73,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
 | `location` | yes (libportal) | `Location(distance_m)`: own location through the XDG location portal, signals `changed(latitude, longitude, accuracy)` and `failed(message)` ([own location](#own-location-location)) |
 | `release_notes` | `add_to()` only | `add_to(dialog, app_id, source=None)`: "What's New" of an `AdwAboutDialog` from the app's metainfo; `find()`, `newest()` without GTK ([What's New](#whats-new-release_notes)) |
-| `feedback` | dialog only | `install(app, repo=…, app_name=…, version=…)`: action `app.report-problem` with the Report a Problem dialog; `issue_url(repo, version)` for the About dialog; `report` and `github` without GTK ([feedback](feedback.md)) |
+| `feedback`, `feedback_dialog`, `feedback_report`, `feedback_github` | dialog only | `install(app, repo=…, app_name=…, version=…)`: action `app.report-problem` with the Report a Problem dialog; `issue_url(repo, version)` for the About dialog; `feedback_dialog` is the dialog, `feedback_report` and `feedback_github` (no GTK) build the issue and send it ([feedback](feedback.md)) |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests; `run_until()` prints the stacks of all threads before its `TimeoutError`, so a hang that only happens in CI can be read from the run's log |
 
 Nothing in the package names an app, a server product or a URL.

@@ -6,8 +6,8 @@ import logging
 from gi.repository import Adw, Gdk, Gtk
 
 from phosh_toolkit import tasks
-from phosh_toolkit.feedback import github
-from phosh_toolkit.feedback import report as rp
+from phosh_toolkit import feedback_github as github
+from phosh_toolkit import feedback_report as rp
 
 log = logging.getLogger("phosh_toolkit.feedback")
 
