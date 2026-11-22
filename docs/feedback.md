@@ -11,6 +11,9 @@ sources:
   - id: gh-issue-url
     resource: https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue#creating-an-issue-from-a-url-query
     title: GitHub Docs, creating an issue from a URL query
+  - id: gh-fine-grained
+    resource: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens
+    title: GitHub Docs, fine-grained personal access tokens (resource owner)
 ---
 
 # Report a problem from the app
@@ -33,10 +36,13 @@ Then one of two ways:
 **Open on GitHub** is always there, also as the way out when sending
 fails (wrong token, offline): the banner offers it and the text stays.
 
-- The token is a fine-grained personal access token with
-  **Issues: Read and write** on the app's repository ("Create a Token"
-  opens GitHub's page). It is stored only after GitHub accepted it, and
-  **Forget** removes it.
+- The token is a classic personal access token with the `public_repo`
+  scope ("Create a Token" opens GitHub's form with it ticked). A
+  fine-grained token can only write to repositories of the owner it is
+  made for[^gh-fine-grained], so it works only for that owner's members
+  (for them a fine-grained token for the owner with **Issues: Read and
+  write** works too). The token is stored only after GitHub accepted
+  it, and **Forget** removes it.
 - A text too long for an address (GitHub serves about 8 KiB) is
   shortened in the form with a note; the full text is put on the
   clipboard to paste.

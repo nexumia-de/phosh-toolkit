@@ -13,7 +13,11 @@ log = logging.getLogger("phosh_toolkit.feedback")
 
 # Keyring kind of the user's token.
 GITHUB_TOKEN = "github-token"
-TOKEN_PAGE = "https://github.com/settings/personal-access-tokens/new"
+# A classic token with the public_repo scope can open issues in any
+# public repository. A fine-grained token can write only to repositories of
+# the owner it is made for, so it works only for members of that owner.
+TOKEN_PAGE = ("https://github.com/settings/tokens/new"
+              "?scopes=public_repo&description=Report%20a%20Problem")
 
 _KINDS = ((rp.PROBLEM, "Problem"), (rp.IDEA, "Idea"))
 _FAILED = {
@@ -88,8 +92,7 @@ class ReportDialog(Adw.Dialog):
         self.token_row.connect("changed", lambda *_: self._update())
         self.help_row = Adw.ActionRow(
             title="Create a Token", activatable=True,
-            subtitle="Fine-grained, with “Issues: Read and write” for "
-                     "this app’s repository")
+            subtitle="Classic, with the “public_repo” scope")
         self.help_row.add_suffix(Gtk.Image(
             icon_name="adw-external-link-symbolic"))
         self.help_row.connect("activated",
