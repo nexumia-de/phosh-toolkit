@@ -202,13 +202,20 @@ const fs = require('fs');
 const [playwright, url, out, width, height, scale, delay, maximize, dir] = process.argv.slice(2);
 const { chromium } = require(playwright);
 
-// Largest surface element = the window's content area (without CSD shadow).
+// The element with the largest visible area = the window's content area
+// (without CSD shadow). Visible: a long list inside the window is one
+// element taller than the window (Mixtura's 639 drinks: 157x6126 px in a
+// 420x720 window), so its full size would win and the maximizing
+// double-click would land on the list's first row.
 const findWindow = () => {
   let best = null, area = 0;
+  const visible = (r) =>
+    Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) *
+    Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
   for (const top of document.body.children) {
     for (const el of top.querySelectorAll('div')) {
       const r = el.getBoundingClientRect();
-      if (r.width * r.height > area) { area = r.width * r.height; best = r.toJSON(); }
+      if (visible(r) > area) { area = visible(r); best = r.toJSON(); }
     }
   }
   return best;

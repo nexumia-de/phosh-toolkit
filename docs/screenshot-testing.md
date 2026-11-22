@@ -76,7 +76,11 @@ scripts/screenshot.sh -o shot.png -- meson devenv -C _build ./src/my-app
   any button: 23 px down the click hit Cirro's reload button and the
   window stayed unmaximized. Afterwards the pointer moves to the bottom
   right corner; left on the header bar it showed a button's tooltip in
-  the picture.
+  the picture. The window is the element with the largest area *inside
+  the viewport*: a long list is one element taller than the window
+  (Mixtura's 639 drinks: 157 x 6126 px in a 420 x 720 window), and when
+  the full area counted, the double-click landed on the list's first
+  row and opened it instead of maximizing.
 - **Window actions are not on the bus.** GTK 4 exports the application's
   actions (`/de/nexumia/MyApp`, `org.gtk.Actions`) but no `/window/<id>`
   objects (checked with `gdbus introspect` on GNOME 51), so `-a` takes
