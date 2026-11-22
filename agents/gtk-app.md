@@ -81,6 +81,9 @@ Full guideline and review checklist: [design](../docs/design.md).
   `<url type="donation">`, About dialog `add_link("Support Development", …)`,
   README, `.github/FUNDING.yml`; no prompts in the main UI
   ([support](../docs/support.md)).
+- Main menu **Report a Problem…** (`app.report-problem` from
+  `phosh_toolkit.feedback.install`), About dialog
+  `issue_url=feedback.issue_url(…)` ([feedback](../docs/feedback.md)).
 - Before committing metadata, fix every error and warning of:
 
   ```sh
