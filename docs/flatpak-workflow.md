@@ -144,7 +144,10 @@ Checked on 2026-11-22: `scripts/precheck.sh` passes on the current
 `main` of Cirro, Ephyra, Nauta, Nuntius, Pensum, Pulsus and Vestigia.
 actionlint could not be run in the cloud session; it first ran in the
 toolkit's self-test, on the toolkit's own workflows
-([owner checks](owner-checks.md)).
+([owner checks](owner-checks.md)). There it reported
+`job.workflow_sha` as unknown (actionlint 1.7.12 does not know that
+property yet); `.github/actionlint.yaml` of this repository ignores
+that one message. Apps do not use the property and need no such file.
 
 # Flathub linter
 
