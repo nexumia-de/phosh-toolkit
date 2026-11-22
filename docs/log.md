@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Fix**: [Flatpak workflow](flatpak-workflow.md): the Flathub linter and the release job check the app out with `submodules: recursive`, like the build. A manifest that includes `toolkit/flatpak/libshumate.yml` from the toolkit submodule failed the linter (`--show-manifest` printed nothing), found in nexumia-de/cirro#80.
 * **Fix**: [Flatpak workflow](flatpak-workflow.md#precheck-and-flatpak-ok): the first run of the Precheck job failed in the self-test, because actionlint 1.7.12 does not know `job.workflow_sha`; `.github/actionlint.yaml` ignores that message for this repository's workflows.
 * **Update**: [Owner checks](owner-checks.md), #11: what is left of the support plan needs the owner's accounts or identity (Open Collective fiscal host, optional PayPal and further platforms, tax and Impressum questions) and is listed there. The toolkit part was done on 2026-10-25 ([support](support.md), [decision](decisions/support-platforms.md), rule, skeleton). An own support page with a hand-written ledger and platforms nobody has an account on are not built.
 * **Update**: [Security review](security-review.md), #45: the last open point is decided. A typed `http://` for the remote address stays allowed, without a warning ([decision](decisions/http-remote-address.md)): no scheme already means `https://`, and the app cannot tell a VPN address from the open internet. All other findings were fixed in #47 (in `v0.4.0`) and #55 (in `v0.6.0`); the apps adopt them with their pin bumps (nexumia-de/ephyra#33, nexumia-de/nauta#45).

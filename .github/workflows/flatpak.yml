@@ -187,9 +187,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      # Submodules: a manifest may include modules from a submodule
+      # (e.g. toolkit/flatpak/libshumate.yml, docs/toolkit-usage.md 3d).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ inputs.app-repository || github.repository }}
+          submodules: recursive
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
@@ -532,9 +535,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Submodules: a manifest may include modules from a submodule
+      # (e.g. toolkit/flatpak/libshumate.yml, docs/toolkit-usage.md 3d).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ inputs.app-repository || github.repository }}
+          submodules: recursive
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
