@@ -40,10 +40,10 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 
 | App | Modules |
 |---|---|
-| [Ephyra](https://github.com/nexumia-de/ephyra) (Jellyfin) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` off |
+| [Ephyra](https://github.com/nexumia-de/ephyra) (Jellyfin) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` off; `release_notes` from nexumia-de/ephyra#7 on |
 | [Nauta](https://github.com/nexumia-de/nauta) (Navidrome, MeTube) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` on |
 | [Pulsus](https://github.com/nexumia-de/pulsus) (Amazfish's data, display only) | `settings`, `style` |
-| [Cirro](https://github.com/nexumia-de/cirro) (rain radar) | `location` and `flatpak/libshumate.yml` once nexumia-de/cirro#49 is done (until then its own copies, which the shared ones came from) |
+| [Cirro](https://github.com/nexumia-de/cirro) (rain radar) | `location` and `flatpak/libshumate.yml` once nexumia-de/cirro#49 is done, `release_notes` when it next touches its About dialog (until then its own copies, which the shared ones came from) |
 | [Vestigia](https://github.com/nexumia-de/vestigia) (Dawarich) | `location` and `flatpak/libshumate.yml`, from nexumia-de/vestigia#6 on |
 
 A change to a module is adopted in every app listed for it, in the same
@@ -72,6 +72,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
 | `location` | yes (libportal) | `Location(distance_m)`: own location through the XDG location portal, signals `changed(latitude, longitude, accuracy)` and `failed(message)` ([own location](#own-location-location)) |
+| `release_notes` | `add_to()` only | `add_to(dialog, app_id, source=None)`: "What's New" of an `AdwAboutDialog` from the app's metainfo; `find()`, `newest()` without GTK ([What's New](#whats-new-release_notes)) |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests; `run_until()` prints the stacks of all threads before its `TimeoutError`, so a hang that only happens in CI can be read from the run's log |
 
 Nothing in the package names an app, a server product or a URL.
@@ -411,6 +412,34 @@ GeoClue. A fix from the real portal on the phone is on the
 The map itself (`Shumate.SimpleMap`, OSM source, user agent,
 attribution, scale) stays in the apps:
 [decision](decisions/shared-flatpak-modules.md).
+
+# What's New (`release_notes`)
+
+The About dialog shows the notes of the newest release, the same text
+GNOME Software shows, read from the installed metainfo. The release
+workflow writes the `<release>` elements ([releases](releases.md)); the
+nightly build gets a development release with the pending changelog
+fragments. Moved out of Cirro (`cirro/metainfo.py`) when Ephyra needed
+the same (nexumia-de/ephyra#7).
+
+```python
+from phosh_toolkit import release_notes
+
+dialog = Adw.AboutDialog(application_name=…, version=…)
+release_notes.add_to(dialog, APP_ID, source=SOURCE_METAINFO)
+```
+
+- `APP_ID` is the running app's id, so the nightly app
+  (`<app id>.Devel`) reads its own file.
+- `source` is the metainfo in the source tree, for a run without
+  installation (`python3 -m app` from the checkout); leave it out if
+  the app only runs installed.
+- `add_to()` returns whether there were notes; without a file, a
+  release or a description the dialog simply has no "What's New".
+- `find(app_id, source)` looks in `metainfo/` of the system data
+  directories (`/app/share` in a Flatpak); `newest(path)` returns
+  `(version, markup)` with AppStream's `<p>`, `<ul>`, `<li>`, which
+  `AdwAboutDialog` takes as it is.
 
 # Security notes
 
