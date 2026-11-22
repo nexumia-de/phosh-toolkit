@@ -37,3 +37,21 @@ Not reproduced outside GitHub's runners, so the cause is not known.
   dialog and see the position appear; refuse once and see the app's
   message instead of a hang.
 
+## Rulesets and the new checks (issue 18)
+
+- [ ] phosh-toolkit: after the pull request is merged, import
+  `.github/rulesets/main.json` again (Settings → Rules → Rulesets →
+  delete "protect main" → Import a ruleset). It now requires
+  `validate`, `lib` and `flatpak / Flatpak OK`. Until then the old
+  ruleset keeps working, because the build jobs kept their names.
+- [ ] Each app: its ruleset still lists `flatpak / REUSE compliance`
+  and the two `flatpak / Build (…)` checks, which goes on working. When
+  an app's pull request switches its `.github/rulesets/main.json` to
+  `flatpak / Flatpak OK`, import that file again.
+- [ ] Apps call the workflows at `@main` today, so the Precheck job
+  runs in every app from the merge on. Its metadata checks pass on all
+  seven apps (run locally on 2026-11-22); actionlint on the apps'
+  workflow files could not be run in the cloud session. If an app's
+  Precheck fails on "Lint workflow files", the annotation names the
+  file and line.
+

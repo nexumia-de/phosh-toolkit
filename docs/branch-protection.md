@@ -33,18 +33,24 @@ contains:
 * **Require status checks**, strict (branch up to date), each check
   bound to GitHub Actions (`integration_id` 15368). The names are the
   check names as GitHub shows them on a pull request: a job called
-  through a reusable workflow is `<caller job> / <job name>`, e.g.
-  `flatpak / Build (x86_64)`.[^rules]
+  through a reusable workflow is `<caller job> / <job name>`.[^rules]
+  Of the reusable Flatpak workflow only its last job is required,
+  `flatpak / Flatpak OK`: it fails when any other job of the workflow
+  failed or was cancelled and passes when they passed or were skipped
+  ([Flatpak workflow](flatpak-workflow.md#precheck-and-flatpak-ok)).
 * **Bypass**: repository admins (`RepositoryRole` 5), for emergencies.
 
 | Repository | Required checks |
 |---|---|
-| phosh-toolkit | `validate`, `flatpak / REUSE compliance`, `flatpak / Build (x86_64)`, `flatpak / Build (aarch64)` |
-| cirro | `test`, `flatpak / REUSE compliance`, `flatpak / Build (x86_64)`, `flatpak / Build (aarch64)` |
+| phosh-toolkit | `validate`, `lib`, `flatpak / Flatpak OK` |
+| an app | its own test job (e.g. `test`), `flatpak / Flatpak OK`, `release / Changelog` if it uses the release workflow |
 | phosh-apps | none: its only workflow runs on pushes and a schedule, never on pull requests, so a required check would never report and block every merge |
 
-`flatpak / Release bundles` is skipped on pull requests and must not be
-required.
+Rulesets written before 2026-11-22 list `flatpak / REUSE compliance`,
+`flatpak / Build (x86_64)` and `flatpak / Build (aarch64)` instead.
+Those jobs keep their names, so such a ruleset goes on working; each
+app switches to `flatpak / Flatpak OK` in its own pull request, after
+which the owner imports the file again.
 
 # Applying it
 
@@ -63,8 +69,11 @@ only suggests checks that ran recently, and a name typed without the
 
 # Keeping it in sync
 
-Renaming a CI job or the calling job (`flatpak:`) changes the check
-name. Update `.github/rulesets/main.json` in the same pull request and
-re-import it, otherwise every later pull request waits for a check that
-no longer exists. A new app repository copies the cirro file and adjusts
-its own test job name.
+Jobs inside the reusable Flatpak workflow can be added or renamed
+without touching any ruleset, as long as `Flatpak OK` keeps its name.
+Renaming a repository's own job (`test`, `validate`) or the calling job
+(`flatpak:`) still changes a required check name: update
+`.github/rulesets/main.json` in the same pull request and re-import it,
+otherwise every later pull request waits for a check that no longer
+exists. A new app repository copies an app's file and adjusts its own
+test job name.

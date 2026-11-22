@@ -77,6 +77,7 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       manifest: examples/de.nexumia.PhoshDemo.yml
+      metadata: examples/*
       # Takes the demo's screenshots from the built Flatpak, with the
       # scripts of this commit rather than main.
       release-config: examples/release.toml

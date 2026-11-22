@@ -45,6 +45,11 @@
 # - The GitHub Release text is the metainfo <release> of the tag.
 # - The nightly build gets a development <release> with the pending
 #   changelog fragments, so the nightly app shows a version and its news.
+# Checks (docs/flatpak-workflow.md, "Precheck and Flatpak OK"): the job
+# "Precheck" validates the workflow files, the metainfo and the desktop
+# file before anything is built; "Flatpak OK" is the single check a
+# branch ruleset requires ("<calling job> / Flatpak OK").
+#
 # The calling job must grant "contents: write" (a caller must grant what
 # the jobs below declare, even for jobs that are skipped).
 name: Flatpak
@@ -96,6 +101,11 @@ on:
         required: false
         type: number
         default: 30
+      metadata:
+        description: Glob of the files among which the Precheck job validates every *.metainfo.xml and *.desktop.
+        required: false
+        type: string
+        default: data/*
       toolkit-ref:
         description: Ref of phosh-toolkit whose scripts the jobs use; keep it equal to the ref in "uses:".
         required: false
@@ -110,6 +120,47 @@ permissions:
   contents: read
 
 jobs:
+  # Seconds instead of the many minutes a build takes to show the same
+  # mistake: the workflow files, the metainfo and the desktop file. The
+  # builds and the linter start only after it (docs/flatpak-workflow.md,
+  # "Precheck and Flatpak OK").
+  precheck:
+    name: Precheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Syntax, expressions and job wiring of the caller's workflows.
+      # Without shellcheck and pyflakes on the run scripts: style
+      # findings there must not stop a build.
+      - name: Lint workflow files
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+        with:
+          version: 1.7.9
+          shellcheck: false
+          pyflakes: false
+          cache: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: nexumia-de/phosh-toolkit
+          ref: ${{ inputs.toolkit-ref }}
+          path: .phosh-toolkit
+
+      - name: Validate metainfo and desktop file
+        env:
+          METADATA: ${{ inputs.metadata }}
+        run: |
+          apt=(sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120)
+          "${apt[@]}" update -q
+          "${apt[@]}" install -y -q --no-install-recommends appstream desktop-file-utils
+          shopt -s nullglob
+          # Unquoted on purpose: the input is a glob.
+          # shellcheck disable=SC2206
+          files=($METADATA)
+          .phosh-toolkit/scripts/precheck.sh "${files[@]}"
+
   reuse:
     name: REUSE compliance
     runs-on: ubuntu-24.04
@@ -123,6 +174,7 @@ jobs:
   # docs/flatpak-workflow.md, "Flathub linter".
   lint:
     name: Flathub linter
+    needs: precheck
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -170,7 +222,9 @@ jobs:
           esac
 
   build:
-    # Stable keeps the plain name, which branch rulesets require.
+    needs: precheck
+    # Stable keeps the plain name: rulesets imported before "Flatpak OK"
+    # existed still require it.
     name: ${{ matrix.variant == 'nightly' && format('Build nightly ({0})', matrix.arch) || format('Build ({0})', matrix.arch) }}
     strategy:
       fail-fast: false
@@ -587,3 +641,30 @@ jobs:
           fi
           gh api "repos/$PUBLISH_REPO/dispatches" -f event_type=app-updated \
             -f "client_payload[repository]=$GITHUB_REPOSITORY"
+
+  # The one check branch rulesets require (docs/branch-protection.md):
+  # red when any job above failed or was cancelled, green when they
+  # passed or were skipped. Jobs can then be added or renamed without
+  # touching the ruleset of every repository.
+  ok:
+    name: Flatpak OK
+    needs: [precheck, reuse, lint, build, release, nightly, notify]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check the results of all jobs
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+          bad = False
+          for job, data in json.loads(os.environ["RESULTS"]).items():
+              result = data["result"]
+              print(f"{job}: {result}")
+              if result in ("failure", "cancelled"):
+                  print(f"::error::Job {job} ended as {result}.")
+                  bad = True
+          sys.exit(1 if bad else 0)
+          EOF

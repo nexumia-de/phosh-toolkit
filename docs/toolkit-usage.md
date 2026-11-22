@@ -84,7 +84,9 @@ jobs:
 Inputs: `manifest` (required), `bundle` (file name without extension,
 defaults to the app id), `retention-days` (default 14),
 `dependencies-doc` (licence inventory, default `docs/dependencies.md`,
-see [licensing](licensing.md)), `release`
+see [licensing](licensing.md)), `metadata` (glob of the files the
+Precheck job validates, default `data/*`; see
+[precheck](flatpak-workflow.md#precheck-and-flatpak-ok)), `release`
 (a tag `v<version>` attaches the bundles to its GitHub Release),
 `nightly` (every push to `main` also builds `<app id>.Devel` and
 attaches it to the pre-release `nightly`; see
