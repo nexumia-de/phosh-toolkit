@@ -34,6 +34,26 @@ The Flatpak build jobs do not use `setup.sh`; the reusable workflow
 installs only `flatpak`, `flatpak-builder` and `librsvg2-common` (see
 [Flatpak workflow](flatpak-workflow.md)).
 
+# Pre-commit hooks
+
+Both profiles install [pre-commit](https://pre-commit.com) (Ubuntu's
+package, 3.6.2 on 24.04, MIT), and `setup.sh` runs `pre-commit install`
+in the repository it is started from when that has a
+`.pre-commit-config.yaml`; an app runs it as
+`bash ../phosh-toolkit/setup.sh`. From then on `git commit` refuses a
+commit whose hooks fail (issue 20). `agents/core.md` forbids
+`--no-verify`.
+
+This repository's hooks: `scripts/precheck.sh` on the example metainfo
+and desktop file, shellcheck on `setup.sh` and `scripts/*.sh`, and
+`reuse lint`. The validate job runs the same file
+(`pre-commit run --all-files`), so the local and the CI check cannot
+drift apart. Hooks for apps: [toolkit usage](toolkit-usage.md#3e-pre-commit-hooks).
+
+The first run clones the hook repositories and builds the Python
+environment of `reuse` (github.com, pypi.org); later runs need no
+network.
+
 # Why cage instead of weston
 
 The full profile used to install `weston` as a test compositor. Nothing

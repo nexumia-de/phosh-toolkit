@@ -1,6 +1,6 @@
 ---
 type: Concept
-title: Dependencies of the shared Flatpak modules
+title: Dependencies of the shared Flatpak modules and the tools
 description: Inventory of the modules phosh-toolkit ships for app manifests (flatpak/) with version, licence and how they are kept current; the demo app builds them in the self-test.
 tags: [dependencies, licences, flatpak, libshumate]
 resource: ../flatpak/
@@ -36,6 +36,17 @@ library for vector tiles.
 The versions are kept current by `.github/workflows/updates.yml` here
 ([dependency updates](dependency-updates.md)); apps get them with the
 toolkit version their submodule points to.
+
+# Development and CI tools
+
+Not shipped with any app.
+
+| Tool | Version | Licence | Used by |
+|---|---|---|---|
+| pre-commit | Ubuntu 24.04 package (3.6.2) | MIT | `setup.sh`, the validate job |
+| fsfe/reuse-tool (pre-commit hook `reuse`) | 6.3.0, commit `ea739bf` | GPL-3.0-or-later and others (REUSE-annotated) | `.pre-commit-config.yaml`, `examples/.pre-commit-config.yaml` |
+| raven-actions/actionlint (action) | 2.2.0, commit `3d39aea` | MIT (its `LICENSE`) | Precheck job of the Flatpak workflow |
+| actionlint | 1.7.12 | MIT | downloaded by that action |
 
 [^libshumate]: libshumate 1.7.0, COPYING and meson.build
 [^protobuf-c]: protobuf-c 1.5.2, LICENSE

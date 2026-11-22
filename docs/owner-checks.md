@@ -68,3 +68,10 @@ Not reproduced outside GitHub's runners, so the cause is not known.
   three `uses:` lines. Not verified here; Dependabot's documentation
   host was not reachable from the cloud session.
 
+## Pre-commit hooks (issue 20)
+
+- [ ] On your own machine, once per repository that has a
+  `.pre-commit-config.yaml` (this one now; each app after its adoption
+  pull request): run the toolkit's `setup.sh` from that repository, or
+  `pre-commit install`. Cloud sessions do it through `setup.sh`.
+

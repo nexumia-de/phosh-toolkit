@@ -22,14 +22,10 @@ jobs:
         run: ./setup.sh
         env:
           SETUP_PROFILE: ci
-      - name: Validate desktop file and metainfo
-        run: |
-          desktop-file-validate examples/*.desktop
-          appstreamcli validate --no-net examples/*.metainfo.xml
-          # Phosh needs "mobile;" (case-insensitive, trailing ';').
-          grep -Eiq '^X-Purism-FormFactor=.*mobile;' examples/*.desktop
-      - name: Lint shell scripts
-        run: shellcheck setup.sh scripts/*.sh
+      # .pre-commit-config.yaml: metadata, shellcheck, reuse lint; the
+      # same hooks a commit runs locally.
+      - name: Run the pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
       - name: Test the release script
         run: |
           sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 \

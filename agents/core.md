@@ -97,6 +97,9 @@ on every turn. Spend tokens on the task, not on context.
 
 ## Before committing
 
+Never commit with `--no-verify`: where a repository has
+`.pre-commit-config.yaml`, its hooks run part of these checks.
+
 1. Build and run the tests of the touched project.
 2. No code duplicated from another repository; every new or grown file
    has one job.

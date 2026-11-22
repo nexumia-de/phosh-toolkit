@@ -49,6 +49,8 @@ CI_PACKAGES=(
   gir1.2-adw-1
   python3-gi
   shellcheck
+  pre-commit            # runs .pre-commit-config.yaml, also in the validate job
+  git
 )
 
 FULL_PACKAGES=(
@@ -63,6 +65,7 @@ FULL_PACKAGES=(
   desktop-file-utils
   appstream
   shellcheck
+  pre-commit            # the hooks of .pre-commit-config.yaml
   # GTK4 + libadwaita
   libgtk-4-dev
   libgtk-4-bin          # gtk4-broadwayd, used by scripts/screenshot.sh
@@ -149,6 +152,17 @@ if command -v node >/dev/null 2>&1 && node -e "require('playwright')" >/dev/null
 else
   warn "Node Playwright not found. scripts/screenshot.sh needs it:"
   warn "  npm install -g playwright && npx playwright install chromium"
+fi
+
+# The checks before every commit, for the repository this script is run
+# from (an app runs it as "bash ../phosh-toolkit/setup.sh").
+if command -v pre-commit >/dev/null 2>&1 && [[ -f .pre-commit-config.yaml ]] &&
+   git rev-parse --git-dir >/dev/null 2>&1; then
+  if pre-commit install >/dev/null; then
+    log "Pre-commit hooks installed in $(pwd)."
+  else
+    warn "pre-commit install failed in $(pwd)."
+  fi
 fi
 
 log "Done."

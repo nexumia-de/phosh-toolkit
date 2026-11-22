@@ -1,0 +1,19 @@
+# Hooks for https://pre-commit.com that app repositories use from their
+# .pre-commit-config.yaml (docs/toolkit-usage.md, 3e).
+# They wrap the checks of the "Before committing" lists in agents/ and
+# of the Precheck job in CI; no logic of their own, no network.
+
+- id: phosh-metadata
+  name: metainfo and desktop file
+  description: appstreamcli validate --no-net, desktop-file-validate and the Mobile form factor on changed metainfo and desktop files.
+  entry: scripts/precheck.sh
+  language: script
+  files: \.(metainfo\.xml|appdata\.xml|desktop)$
+
+- id: phosh-changelog
+  name: changelog fragments
+  description: Changed changelog fragments have a valid name and content (release.py check).
+  entry: scripts/release.py check
+  language: script
+  files: ^changelog\.d/
+  pass_filenames: false

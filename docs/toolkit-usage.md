@@ -186,6 +186,35 @@ the sibling checkout: `PYTHONPATH=../phosh-toolkit/lib`. The app's
 `tests.yml` checks out phosh-toolkit at the commit the manifest pins,
 so tests and Flatpak use the same code.
 
+# 3e. Pre-commit hooks
+
+The checks of the "Before committing" lists that a machine can run are
+hooks, so a commit that breaks them is refused locally instead of
+failing in CI minutes later. An app copies
+`examples/.pre-commit-config.yaml` to its root:
+
+| Hook | From | What |
+|---|---|---|
+| `phosh-metadata` | this toolkit (`.pre-commit-hooks.yaml`) | `scripts/precheck.sh` on changed `*.metainfo.xml` and `*.desktop`: `appstreamcli validate --no-net`, `desktop-file-validate`, the `mobile;` form factor |
+| `phosh-changelog` | this toolkit | `release.py check` when a file in `changelog.d/` changed: fragment names and content |
+| `reuse` | fsfe/reuse-tool | `reuse lint` |
+
+- `rev` of the toolkit is the commit of the tag the app's workflows pin
+  ([pinning](#pinning-the-toolkit)), with `# frozen: v…`; change them
+  together.
+- `setup.sh` installs pre-commit and the hooks
+  ([host setup](host-setup.md#pre-commit-hooks)). By hand:
+  `pre-commit install`; all files once: `pre-commit run --all-files`.
+- The hooks call `appstreamcli`, `desktop-file-validate` and `python3`
+  from the host; `setup.sh` installs them.
+- A Ruff hook belongs to the app that has adopted Ruff, not to the
+  skeleton.
+
+Checked on 2026-11-22 with `pre-commit try-repo` in a scratch repository
+holding Cirro's metainfo, desktop file and fragments: both hooks pass;
+with `X-Purism-FormFactor=Workstation;` the commit is refused. Run time
+under a second after the first run.
+
 # 3d. Shared Flatpak modules
 
 Manifest modules that two apps need live in `flatpak/`
