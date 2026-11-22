@@ -19,7 +19,9 @@ GitHub only takes an issue from a signed-in account. The options:
 1. **Prefilled issue form in the browser.** No secret and no request
    from the app; anyone with a GitHub account can submit; one step in
    the browser.
-2. **The user's own token in the app.** The issue is created without
+2. **The user's own token in the app** (a classic token with
+   `public_repo`: a fine-grained one only writes to its own owner's
+   repositories). The issue is created without
    leaving the app. Needs a token once; LocalGameGalaxy already works
    this way (`src/lib/github.ts`).
 3. **GitHub's OAuth device flow.** Like 2, but signing in by code
