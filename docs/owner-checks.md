@@ -55,3 +55,16 @@ Not reproduced outside GitHub's runners, so the cause is not known.
   Precheck fails on "Lint workflow files", the annotation names the
   file and line.
 
+## Toolkit tag and pins (issue 19)
+
+- [ ] After the pull request is merged: Actions → *Tag release* → Run
+  workflow with version `0.7.0`. The apps wait for this tag (location
+  wrapper, libshumate modules, "What's New", workflow pins).
+- [ ] Each app then switches its three workflow calls from `@main` to
+  `@<commit of v0.7.0> # v0.7.0` in its own pull request (the app
+  sessions do this; nothing to do here but merge).
+- [ ] First Dependabot run after a later toolkit tag: check that its
+  pull request in an app changes the SHA and the `# v…` comment of the
+  three `uses:` lines. Not verified here; Dependabot's documentation
+  host was not reachable from the cloud session.
+

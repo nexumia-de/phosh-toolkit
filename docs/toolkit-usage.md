@@ -76,7 +76,7 @@ jobs:
   flatpak:
     permissions:
       contents: write
-    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
     with:
       manifest: de.nexumia.MyApp.yml
 ```
@@ -97,8 +97,32 @@ publishing to the phone through GNOME Software is described in
 [shared app repository](app-repository.md).
 
 Further inputs for the [release features](releases.md):
-`release-config` (default `release.toml`) and `toolkit-ref` (ref of the
-toolkit scripts, default `main`).
+`release-config` (default `release.toml`). `toolkit-ref` (ref of the
+toolkit scripts) is left out: the workflow uses the commit of its own
+file.
+
+## Pinning the toolkit
+
+Apps call the reusable workflows at the commit of a toolkit tag, with
+the tag as comment, like every other action
+([decision](decisions/toolkit-version-pins.md)):
+
+```yaml
+    uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
+```
+
+- The commit of a tag: `git ls-remote https://github.com/nexumia-de/phosh-toolkit refs/tags/v0.7.0`.
+- All three workflows of an app (`flatpak.yml`, `release.yml`,
+  `update-check.yml`) use the same commit. Nothing else names the
+  version: the jobs check out the toolkit's scripts at
+  `job.workflow_sha`, the commit of the workflow file that defines
+  them.
+- Dependabot's `github-actions` updates (already in every repository's
+  `.github/dependabot.yml`) propose the next tag with SHA and comment;
+  the app's CI then runs against it.
+- `@main` still works and is what an app uses until its own pull request
+  switches it; from then on a broken commit on the toolkit's `main`
+  cannot break that app's CI or a running release.
 
 For a fork of a third-party app, trigger the workflow on the `phosh`
 branch instead of `main`.
@@ -107,7 +131,7 @@ branch instead of `main`.
 
 `release.toml`, `changelog.d/README.md` and
 `.github/workflows/release.yml` calling
-`nexumia-de/phosh-toolkit/.github/workflows/release.yml@main` (the usage
+`nexumia-de/phosh-toolkit/.github/workflows/release.yml@<commit of the tag>` (the usage
 block at the top of that file), plus the secret `RELEASE_TOKEN` and the
 required check `release / Changelog` in the app's ruleset. See
 [releases](releases.md).
@@ -115,7 +139,7 @@ required check `release / Changelog` in the app's ruleset. See
 # 3b. Updates and licences
 
 - `.github/workflows/update-check.yml` calling
-  `nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@main`
+  `nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@<commit of the tag>`
   weekly, and `.github/dependabot.yml` for GitHub Actions. Setup steps:
   [dependency updates](dependency-updates.md).
 - `REUSE.toml` and `LICENSES/`, `docs/dependencies.md`, and licence

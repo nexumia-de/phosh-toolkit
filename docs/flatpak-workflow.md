@@ -195,8 +195,9 @@ the workflow also:
 - adds a development `<release>` with the pending changelog fragments to
   the nightly app's metainfo.
 
-The jobs check out phosh-toolkit's scripts at the input `toolkit-ref`
-(default `main`; keep it equal to the ref in `uses:`) and move them out
+The jobs check out phosh-toolkit's scripts at the commit of the
+workflow file itself (`job.workflow_sha`, so the ref in `uses:` is the
+only pin; the input `toolkit-ref` overrides it) and move them out
 of the workspace, because a manifest's `type: dir` source copies the
 workspace into the build. Details: [releases](releases.md).
 

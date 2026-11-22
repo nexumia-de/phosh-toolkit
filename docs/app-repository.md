@@ -89,7 +89,7 @@ app repo (tag v*, push to main)            nexumia-de/phosh-apps
      flatpak:
        permissions:
          contents: write
-       uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
+       uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
        with:
          manifest: de.nexumia.MyApp.yml
          release: true

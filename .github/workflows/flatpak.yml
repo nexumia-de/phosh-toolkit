@@ -13,7 +13,7 @@
 #     flatpak:
 #       permissions:
 #         contents: write
-#       uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@main
+#       uses: nexumia-de/phosh-toolkit/.github/workflows/flatpak.yml@<commit of the tag> # v0.7.0
 #       with:
 #         manifest: de.nexumia.MyApp.yml
 #         release: true
@@ -107,10 +107,15 @@ on:
         type: string
         default: data/*
       toolkit-ref:
-        description: Ref of phosh-toolkit whose scripts the jobs use; keep it equal to the ref in "uses:".
+        description: Ref of phosh-toolkit whose scripts the jobs use. Leave it out - the default is the commit of this workflow file, so the ref in "uses:" is the only pin.
         required: false
         type: string
-        default: main
+        default: ''
+      app-repository:
+        description: Build another repository's app instead of the caller's (owner/name, public). Only for the toolkit's self-test, which builds a real app with the workflow of a pull request.
+        required: false
+        type: string
+        default: ''
     secrets:
       PUBLISH_TOKEN:
         description: Token allowed to dispatch to publish-repo. Without it the publish repo's schedule picks the release up.
@@ -130,6 +135,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.app-repository || github.repository }}
 
       # Syntax, expressions and job wiring of the caller's workflows.
       # Without shellcheck and pyflakes on the run scripts: style
@@ -137,7 +144,7 @@ jobs:
       - name: Lint workflow files
         uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
         with:
-          version: 1.7.9
+          version: 1.7.12
           shellcheck: false
           pyflakes: false
           cache: false
@@ -145,7 +152,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
-          ref: ${{ inputs.toolkit-ref }}
+          ref: ${{ inputs.toolkit-ref || job.workflow_sha }}
           path: .phosh-toolkit
 
       - name: Validate metainfo and desktop file
@@ -167,6 +174,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.app-repository || github.repository }}
       - uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
 
   # Flathub's linter on the manifest (permissions, modules, metadata
@@ -179,10 +188,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.app-repository || github.repository }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
-          ref: ${{ inputs.toolkit-ref }}
+          ref: ${{ inputs.toolkit-ref || job.workflow_sha }}
           path: .phosh-toolkit
 
       - name: Install the linter
@@ -242,13 +253,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          repository: ${{ inputs.app-repository || github.repository }}
           submodules: recursive
 
       # Outside the workspace, which a manifest's "type: dir" source copies.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
-          ref: ${{ inputs.toolkit-ref }}
+          ref: ${{ inputs.toolkit-ref || job.workflow_sha }}
           path: .phosh-toolkit
       - name: Move the toolkit out of the workspace
         id: toolkit
@@ -521,10 +533,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.app-repository || github.repository }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nexumia-de/phosh-toolkit
-          ref: ${{ inputs.toolkit-ref }}
+          ref: ${{ inputs.toolkit-ref || job.workflow_sha }}
           path: .phosh-toolkit
 
       # Tag runs build only the stable variant: its bundles, screenshots

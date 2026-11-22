@@ -20,3 +20,4 @@
 * [The connection form owns the other certificate hosts](certificate-hosts-in-form.md) - "Other Certificate Hosts" in the shared form, not per app, so the setup page's proxy login hands the certificate to an identity provider behind the same mutual TLS.
 * [Code names and visible names](app-names.md) - Repository and app id keep a code name; users see a descriptive name; the agent suggests names, the owner chooses.
 * [Shared Flatpak modules through a git submodule](shared-flatpak-modules.md) - libshumate and protobuf-c live in flatpak/ and apps include them through the toolkit as a submodule; the map set-up stays in the apps.
+* [Toolkit versions: plain tags, apps pin the workflows](toolkit-version-pins.md) - Apps call the reusable workflows at the commit of a toolkit tag; the workflow finds its own scripts; a real app is built before a workflow change is tagged.

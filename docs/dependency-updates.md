@@ -33,7 +33,7 @@ and an update is one reviewable change. Why:
 | `runtime-version` (GNOME runtime) | same workflow, job `runtime` | an issue "GNOME runtime N is available" |
 | GitHub Actions, pinned to the commit of an exact release (`actions/checkout@3d3c42e… # v7.0.1`) | Dependabot, `.github/dependabot.yml` in every repository, weekly; it updates the SHA and the version comment together | one grouped pull request |
 | Playwright for screenshots (`scripts/package.json` in phosh-toolkit) | Dependabot (`npm`, directory `/scripts`), weekly | a pull request |
-| The toolkit's reusable workflows (`@main`) | not pinned; toolkit changes must stay backward compatible ([central toolkit](decisions/central-toolkit.md)) | – |
+| The toolkit's reusable workflows, pinned to the commit of a toolkit tag (`…/flatpak.yml@<sha> # v0.7.0`, [decision](decisions/toolkit-version-pins.md)) | Dependabot `github-actions`, as for other actions | one grouped pull request; the app's CI runs with the new toolkit version |
 | Check-only tools: the flatpak-external-data-checker image (`:latest`) and Flathub's linter (`org.flatpak.Builder`, branch `stable`) | not pinned, see below | – |
 
 A tag like `@v7` can be moved to other code by whoever controls the
