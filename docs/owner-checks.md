@@ -27,3 +27,13 @@ Not reproduced outside GitHub's runners, so the cause is not known.
   to the stopped test server fill the pool of
   `phosh_toolkit.tasks`; an idle pool means the answer was delivered to
   a window that is gone. Open a new issue with that stack.
+
+## Own location on the phone (issue 22)
+
+`phosh_toolkit.location` is tested against a stand-in portal only.
+
+- [ ] After Cirro (nexumia-de/cirro#49) or Vestigia uses the shared
+  module: on the phone, tap "Show my location", allow the portal's
+  dialog and see the position appear; refuse once and see the app's
+  message instead of a hang.
+

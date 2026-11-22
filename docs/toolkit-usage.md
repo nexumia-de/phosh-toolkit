@@ -160,6 +160,51 @@ the sibling checkout: `PYTHONPATH=../phosh-toolkit/lib`. The app's
 `tests.yml` checks out phosh-toolkit at the commit the manifest pins,
 so tests and Flatpak use the same code.
 
+# 3d. Shared Flatpak modules
+
+Manifest modules that two apps need live in `flatpak/`
+([decision](decisions/shared-flatpak-modules.md),
+[inventory](dependencies.md)):
+
+| File | Modules | For |
+|---|---|---|
+| `flatpak/libshumate.yml` | `libshumate`, nested `protobuf-c` | apps with a map |
+
+flatpak-builder includes module files only from the app's own tree, so
+the app adds the toolkit as a git submodule (the way Flathub's
+`shared-modules` is used) at the same tag its `phosh-toolkit` module
+pins:
+
+```sh
+git submodule add https://github.com/nexumia-de/phosh-toolkit.git toolkit
+```
+
+```sh
+git -C toolkit checkout v0.7.0
+```
+
+```yaml
+modules:
+  - toolkit/flatpak/libshumate.yml
+  - name: phosh-toolkit
+    ...
+```
+
+- The Flatpak workflow checks submodules out (`submodules: recursive`)
+  and `--show-manifest` inlines the file, so the dependency inventory
+  check, the licence file check and the Flathub manifest see the
+  modules like any other. List `` `libshumate` `` and `` `protobuf-c` ``
+  in the app's `docs/dependencies.md`.
+- `REUSE.toml` of the app: REUSE skips submodules by default; nothing
+  to add.
+- Versions are updated here (`.github/workflows/updates.yml`), not in
+  the app: when the app moves to a new toolkit tag, change the
+  submodule and the `tag`/`commit` of the `phosh-toolkit` module in the
+  same pull request.
+- The file sets no `cleanup`; the app's manifest removes headers and
+  static libraries as before (`/include`, `/lib/pkgconfig`,
+  `/share/gir-1.0`, `'*.a'`, `'*.la'`).
+
 # 4. Screenshots
 
 From the app repository:

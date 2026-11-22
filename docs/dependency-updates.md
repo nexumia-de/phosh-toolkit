@@ -29,6 +29,7 @@ and an update is one reviewable change. Why:
 | Pinned thing | Tool | Result |
 |---|---|---|
 | Flatpak module sources (tarballs, wheels, files) | flatpak-external-data-checker in the reusable [update-check workflow](../.github/workflows/update-check.yml), weekly | one pull request with new URLs and checksums |
+| The toolkit's shared modules (`flatpak/`, [inventory](dependencies.md)) | the same checker, run here by `.github/workflows/updates.yml` on the demo manifest that includes them | one pull request in phosh-toolkit; apps get the versions with the next toolkit tag |
 | `runtime-version` (GNOME runtime) | same workflow, job `runtime` | an issue "GNOME runtime N is available" |
 | GitHub Actions, pinned to the commit of an exact release (`actions/checkout@3d3c42e… # v7.0.1`) | Dependabot, `.github/dependabot.yml` in every repository, weekly; it updates the SHA and the version comment together | one grouped pull request |
 | Playwright for screenshots (`scripts/package.json` in phosh-toolkit) | Dependabot (`npm`, directory `/scripts`), weekly | a pull request |

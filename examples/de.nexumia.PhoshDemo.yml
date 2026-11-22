@@ -10,7 +10,18 @@ finish-args:
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/gir-1.0
+  - '*.a'
+  - '*.la'
 modules:
+  # The demo does not show a map; the module is here so that the
+  # self-test builds the shared snippet on both architectures and the
+  # update check keeps its versions current (docs/toolkit-usage.md,
+  # "Shared Flatpak modules").
+  - ../flatpak/libshumate.yml
   - name: phosh-demo
     buildsystem: simple
     build-commands:

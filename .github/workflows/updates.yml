@@ -1,0 +1,25 @@
+# Weekly check for newer versions of what the toolkit's own Flatpak
+# manifests pin: the shared modules in flatpak/ (included by the demo
+# manifest) and the GNOME runtime of the demo. Apps run the same
+# reusable workflow on their manifests (docs/dependency-updates.md).
+name: Updates
+
+on:
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-check:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    uses: ./.github/workflows/update-check.yml
+    with:
+      manifest: examples/de.nexumia.PhoshDemo.yml
+    secrets:
+      UPDATE_TOKEN: ${{ secrets.UPDATE_TOKEN }}

@@ -64,7 +64,7 @@ jobs:
             gir1.2-soup-3.0 gir1.2-secret-1 glib-networking \
             gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base \
             gstreamer1.0-plugins-good gir1.2-webkit-6.0 bubblewrap \
-            openssl xvfb xauth dbus
+            gir1.2-xdp-1.0 gir1.2-xdpgtk4-1.0 openssl xvfb xauth dbus
       - name: Run tests
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -v tests/lib
 

@@ -2,7 +2,7 @@
 type: Concept
 title: Shared connection and playback
 description: The phosh_toolkit Python package that server clients (Ephyra, Nauta) share - HTTP with client certificates, local/remote route with server id check, keyring, connection form, media proxy, playbin player and image cache - and how an app plugs into it.
-tags: [shared-code, connection, mtls, tls, networkmanager, keyring, proxy, gstreamer, python]
+tags: [shared-code, location, connection, mtls, tls, networkmanager, keyring, proxy, gstreamer, python]
 resource: ../lib/phosh_toolkit/
 generated: { by: claude-code/2.1.317, at: 2026-11-04T12:00:00Z }
 sources:
@@ -43,6 +43,8 @@ Ephyra (Jellyfin) built the client side for this first; Nauta
 | [Ephyra](https://github.com/nexumia-de/ephyra) (Jellyfin) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` off |
 | [Nauta](https://github.com/nexumia-de/nauta) (Navidrome, MeTube) | all except `testing` in the app (tests use it); `network` through `router`; `proxy_basic` on |
 | [Pulsus](https://github.com/nexumia-de/pulsus) (Amazfish's data, display only) | `settings`, `style` |
+| [Cirro](https://github.com/nexumia-de/cirro) (rain radar) | `location` and `flatpak/libshumate.yml` once nexumia-de/cirro#49 is done (until then its own copies, which the shared ones came from) |
+| [Vestigia](https://github.com/nexumia-de/vestigia) (Dawarich) | `location` and `flatpak/libshumate.yml`, from nexumia-de/vestigia#6 on |
 
 A change to a module is adopted in every app listed for it, in the same
 task (`AGENTS.md`, "Shared code"). Keep this table current.
@@ -69,6 +71,7 @@ task (`AGENTS.md`, "Shared code"). Keep this table current.
 | `widgets` | yes | `spinner()`, `loading_page()`, `error_page()`, `Ratio` |
 | `proxy_login` | yes (WebKitGTK 6) | `make_page()`/`sign_in()`: the proxy's own login in a web view, `CookieJar` for its session cookies, `ProxyCredentials` for its HTTP Basic auth |
 | `connection_form` | yes | `ConnectionForm`: server address, client certificate, home Wi-Fi groups |
+| `location` | yes (libportal) | `Location(distance_m)`: own location through the XDG location portal, signals `changed(latitude, longitude, accuracy)` and `failed(message)` ([own location](#own-location-location)) |
 | `testing` | no | `make_pki()`, `server_context()`, `run_until()` for the apps' tests; `run_until()` prints the stacks of all threads before its `TimeoutError`, so a hang that only happens in CI can be read from the run's log |
 
 Nothing in the package names an app, a server product or a URL.
@@ -381,6 +384,33 @@ phone, 2026-11-04). `video=False` plays sound only.
 - Tested (`tests/lib/test_media.py`): the German of two audio tracks
   plays, no subtitle, switching to English without a restart; stop()
   then a release on another thread.
+
+# Own location (`location`)
+
+`Location(distance_m, accuracy=Xdp.LocationAccuracy.EXACT)` wraps the
+XDG location portal through libportal (`Xdp`, `XdpGtk4`, both in
+`org.gnome.Platform`); GeoClue answers behind it, inside and outside the
+Flatpak, with no extra permission in the manifest. Moved out of Cirro
+when Vestigia needed the same (issue 22).
+
+- `start(window)` asks for fixes; the window is the parent of the
+  portal's permission dialog. `stop()` ends them; `running` tells.
+- `changed(latitude, longitude, accuracy in m)` on every fix, also kept
+  in `fix`; `failed(message)` when the portal is missing or the user
+  refuses. After a failure `start()` can be called again.
+- `distance_m` is the portal's distance threshold and has no default:
+  Cirro passes 200 (finer steps do not matter on a 1 km radar grid), a
+  tracking app the distance its server filters by; 0 reports every fix.
+- `EXACT` lets GeoClue use the phone's GNSS; the coarser levels rely on
+  Wi-Fi and cell lookups that are often unavailable.
+
+Tests (`tests/lib/test_location.py`) use a stand-in portal; CI has no
+GeoClue. A fix from the real portal on the phone is on the
+[owner checks](owner-checks.md).
+
+The map itself (`Shumate.SimpleMap`, OSM source, user agent,
+attribution, scale) stays in the apps:
+[decision](decisions/shared-flatpak-modules.md).
 
 # Security notes
 
