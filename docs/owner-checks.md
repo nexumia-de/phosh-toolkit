@@ -75,3 +75,33 @@ Not reproduced outside GitHub's runners, so the cause is not known.
   pull request): run the toolkit's `setup.sh` from that repository, or
   `pre-commit install`. Cloud sessions do it through `setup.sh`.
 
+## Support for development (issue 11)
+
+Done in the repositories: the rule, the skeleton and
+[support](support.md) with the [decision](decisions/support-platforms.md);
+every app links `https://liberapay.com/suitably`. What needs the
+owner's accounts or identity:
+
+- [ ] Open Collective `nexumia`: un-archive it and apply to a fiscal
+  host (Settings → Fiscal Host; Open Source Collective first, Open
+  Collective Europe as fallback). Their acceptance rules, also for
+  mostly AI-written projects, are not verified. When it is live, tell
+  an agent: the link order in [support](support.md) and in the apps
+  changes then.
+- [ ] Optional: PayPal as a second processor on Liberapay (Stripe has
+  closed accounts linked to Liberapay before).
+- [ ] Further platforms (Ko-fi, GitHub Sponsors, Polar, …) only if you
+  want them: create the account, then have an agent verify its fees on
+  the platform's own pricing page and add it to
+  [support](support.md) and `FUNDING.yml`. None is built in advance.
+- [ ] Tax and legal: ask a tax advisor whether the payments are
+  business income and whether the Kleinunternehmerregelung applies;
+  check whether a page of your own that asks for support needs an
+  Impressum. Not legal advice; nothing in the repositories depends on
+  the answer.
+
+Not planned: an own support page with a hand-written monthly ledger.
+One link per app goes to the platform, whose public income display
+(Liberapay) or ledger (Open Collective) is the transparency; you ruled
+the manual ledger out on 2026-10-25 as too much work.
+
